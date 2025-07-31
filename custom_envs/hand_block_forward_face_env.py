@@ -54,7 +54,7 @@ class MujocoHandBlockForwardFaceTouchEnv(MujocoManipulateTouchSensorsEnv, EzPick
         R = rotations.quat2mat(quat)
         axes = R.T
         forward = np.array([1.0, 0.0, 0.0])
-        return any(abs(np.dot(axis, forward)) > 0.95 for axis in axes)
+        return any(abs(np.dot(axis, forward)) > 0.9848 for axis in axes)
     
     def _is_success(self, achieved_goal, desired_goal):
         quat = achieved_goal[..., 3:]  # Always extracts quaternion correctly
