@@ -53,12 +53,18 @@ class MujocoHandBlockForwardFaceTouchEnv(MujocoManipulateTouchSensorsEnv, EzPick
         return any(abs(np.dot(axis, forward)) > 0.95 for axis in axes)
     
     def _is_success(self, achieved_goal, desired_goal):
-        """
-        Success if any cube face is aligned ±X direction.
-        """
-        quat = achieved_goal[..., 3:]
-        is_forward = np.array([self._is_forward_facing(q) for q in quat])
-        return is_forward.astype(np.float32)
+        quat = achieved_goal[..., 3:]  # Always extracts quaternion correctly
+
+        # Handle single or batch cases
+        if quat.ndim == 1:
+            is_forward = self._is_forward_facing(quat)
+        elif quat.ndim == 2:
+            is_forward = np.array([self._is_forward_facing(q) for q in quat])
+        else:
+            raise ValueError(f"Unexpected quaternion shape: {quat.shape}")
+
+        return np.array(is_forward, dtype=np.float32)
+
 
     def compute_reward(self, achieved_goal, desired_goal, info):
         """

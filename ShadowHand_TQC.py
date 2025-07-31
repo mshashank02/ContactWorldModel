@@ -12,6 +12,14 @@ from sb3_contrib.common.wrappers import TimeFeatureWrapper
 import wandb
 from wandb.integration.sb3 import WandbCallback
 import warnings
+from custom_envs.hand_block_forward_face_env import MujocoHandBlockForwardFaceTouchEnv
+from gymnasium.envs.registration import register
+
+register(
+    id="HandManipulateBlock_ForwardFaceTouchSensors-v1",
+    entry_point=MujocoHandBlockForwardFaceTouchEnv,
+    max_episode_steps=50,
+)
 
 # ignore warning. it does not affect the training
 warnings.filterwarnings("ignore", message=".*method is not within the observation space*")
