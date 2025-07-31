@@ -14,6 +14,7 @@ from wandb.integration.sb3 import WandbCallback
 import warnings
 from custom_envs.hand_block_forward_face_env import MujocoHandBlockForwardFaceTouchEnv
 from gymnasium.envs.registration import register
+from custom_wrappers.remove_object_state import RemoveObjectStateWrapper
 
 register(
     id="HandManipulateBlock_ForwardFaceTouchSensors-v1",
@@ -110,6 +111,7 @@ def parse_args():
 def make_env(env_id, seed, rank):
     def _init():
         env = gym.make(env_id, render_mode="rgb_array")
+        env = RemoveObjectStateWrapper(env)
         env.reset(seed=seed + rank)
         env = Monitor(env)
         env = TimeFeatureWrapper(env)
@@ -119,6 +121,7 @@ def make_env(env_id, seed, rank):
 def make_eval_env(env_id, seed):
     def _init():
         env = gym.make(env_id, render_mode="rgb_array")
+        env = RemoveObjectStateWrapper(env)
         env.reset(seed=seed)
         env = Monitor(env) 
         env = TimeFeatureWrapper(env)

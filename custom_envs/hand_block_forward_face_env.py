@@ -1,7 +1,7 @@
 import os 
 import numpy as np 
 from gymnasium.utils.ezpickle import EzPickle
-
+from gymnasium import spaces
 from gymnasium_robotics.envs.shadow_dexterous_hand import MujocoManipulateTouchSensorsEnv
 from gymnasium_robotics.utils import rotations
 #Path to the Mujcoco XML file 
@@ -46,6 +46,10 @@ class MujocoHandBlockForwardFaceTouchEnv(MujocoManipulateTouchSensorsEnv, EzPick
             self, target_position, target_rotation, touch_get_obs, reward_type, **kwargs
         )
 
+        # Postpone this until sim is initialized
+
+
+    
     def _is_forward_facing(self, quat):
         R = rotations.quat2mat(quat)
         axes = R.T
@@ -72,4 +76,6 @@ class MujocoHandBlockForwardFaceTouchEnv(MujocoManipulateTouchSensorsEnv, EzPick
         """
         success = self._is_success(achieved_goal, desired_goal)
         return success - 1.0  # 0 if success, -1 if not
+    
+
 
