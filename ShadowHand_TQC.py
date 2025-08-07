@@ -13,12 +13,19 @@ import wandb
 from wandb.integration.sb3 import WandbCallback
 import warnings
 from custom_envs.hand_block_forward_face_env import MujocoHandBlockForwardFaceTouchEnv
+from custom_envs.hand_block_yaw import MujocoHandBlockYawTouchEnv
 from gymnasium.envs.registration import register
 from custom_wrappers.remove_object_state import RemoveObjectStateWrapper
 
 register(
     id="HandManipulateBlock_ForwardFaceTouchSensors-v1",
     entry_point=MujocoHandBlockForwardFaceTouchEnv,
+    max_episode_steps=50,
+)
+
+register(
+    id="HandManipulateBlock_YawTouch-v1",
+    entry_point=MujocoHandBlockYawTouchEnv,
     max_episode_steps=50,
 )
 
