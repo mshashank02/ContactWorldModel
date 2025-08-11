@@ -255,15 +255,43 @@ def build_sensor_xml_scaled(
 
     return xml, stats
 
+def _fmt_num(x: float) -> str:
+    """Short, filename-friendly float formatting."""
+    # 1) limit precision; 2) strip trailing zeros/dot
+    s = f"{x:.6f}".rstrip("0").rstrip(".")
+    return s if s else "0"
+
+def save_touch_xml(xml: str, Ntotal: int, Rppx: float, Rpt: float) -> str:
+    """Save XML to shared_touch_sensors_{Ntotal}_{Rppx}_{Rpt}.xml and return the path."""
+    fname = f"shared_touch_sensors_{Ntotal}_{_fmt_num(Rppx)}_{_fmt_num(Rpt)}.xml"
+    with open(fname, "w", encoding="utf-8") as f:
+        # add an XML header so editors recognize it as XML
+        if not xml.lstrip().startswith("<?xml"):
+            f.write('<?xml version="1.0" encoding="utf-8"?>\n')
+        f.write(xml)
+        if not xml.endswith("\n"):
+            f.write("\n")
+    return fname
+
+
 
 # ------------------ example run ------------------
 
 if __name__ == "__main__":
+
+    Ntotal = 90
+    Rppx = 1.0
+    Rpt = 1.0
+    
     xml, stats = build_sensor_xml_scaled(
         Ap=1.0, Apx=1.0, At=1.0,
-        Ntotal=92, Rppx=1.0, Rpt=1.0,
+        Ntotal=90, Rppx=1.0, Rpt=1.0,
         Ap1=25.0, Ap2=25.0
     )
+
+    # Save to file with requested naming
+    out_path = save_touch_xml(xml, Ntotal=Ntotal, Rppx=Rppx, Rpt=Rpt)
+    print(f"\nSaved sensor XML to: {out_path}\n")
 
     # Print XML
     print(xml)
