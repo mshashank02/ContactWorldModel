@@ -58,8 +58,17 @@ class MujocoHandBlockYawTouchEnv(MujocoManipulateTouchSensorsEnv, EzPickle):
         return np.abs(((yaw_a - yaw_b + np.pi) % (2 * np.pi)) - np.pi)
 
     def _is_success(self, achieved_goal, desired_goal):
+
+
         quat_a = achieved_goal[..., 3:]
         quat_b = desired_goal[..., 3:]
+
+        # Debug prints
+        print("\n[DEBUG] _is_success called")
+        print(f"achieved_goal.shape = {achieved_goal.shape}, ndim = {achieved_goal.ndim}")
+        print(f"desired_goal.shape  = {desired_goal.shape}, ndim = {desired_goal.ndim}")
+        print(f"quat_a.shape = {quat_a.shape}, ndim = {quat_a.ndim}")
+        print(f"quat_b.shape = {quat_b.shape}, ndim = {quat_b.ndim}")
 
         if quat_a.ndim == 1:
             error = self._yaw_error(quat_a, quat_b)
