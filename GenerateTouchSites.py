@@ -86,6 +86,18 @@ def append_site(body_elem, site_name):
     else:
         body_elem.insert(insert_idx, site)
 
+#Sizing portion of the code 
+
+#Tunable params 
+ALPHA = 0.90 #tangential coverage
+BETA = 0.60 #offset form center on the face
+T_MAX = 0.005 # abs cap for face-normal half-thickness (m)
+T_FRAC_CAP = 0.20 #capsule 
+T_FRAC_BOX = 0.20  # box:     t = min(0.2 * min(sx,sy), T_MAX)
+GAP_FRAC  = 0.5    # axial gap relative to t; g = max(GAP_FRAC * t, 0.0005)
+Z_MIN     = 0.003  # minimum half-length per band
+FRONT_ONLY_BODIES = {"robot0:palm", "robot0:lfmetacarpal"}
+
 def merge_sites(base_xml_path, sensor_xml_path, out_xml_path):
     sensor_sites = parse_sensor_sites(sensor_xml_path)
     base_tree = ET.parse(base_xml_path)
