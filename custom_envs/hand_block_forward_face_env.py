@@ -18,10 +18,13 @@ class MujocoHandBlockForwardFaceTouchEnv(MujocoManipulateTouchSensorsEnv, EzPick
     # The reward is sparse and is -1 when none of the cubes faces are aligned with the positive X axis in world coordinates
     and is 0 when any face of the cube is aligned with the positive X axis in world coordinated.
 
-    ##Observation Space 
+    ##Observation Space
 
-    We change the observation space to only contain the proprioceptive inputs of the robot i.e. the joint angles
-    and velocities and remove the states of the cube. Touch sensor data from the 92 sensors is also included.
+    The environment exposes the full observation vector from MuJoCo, including the
+    cube's state alongside the hand's proprioceptive information and touch sensor
+    readings.  If you need to hide the object's state, use an external wrapper to
+    filter the observations accordingly.  Touch sensor data from the 92 sensors is
+    always included.
 
     """
 
