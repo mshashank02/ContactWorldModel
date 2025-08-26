@@ -3,7 +3,8 @@
 
 from __future__ import annotations
 from typing import Dict, List, Tuple
-import os, sys, math, argparse, re, xml.etree.ElementTree as ET
+import os, sys, math, argparse, re, shutil, json
+import xml.etree.ElementTree as ET
 from collections import defaultdict, namedtuple
 
 # =========================
@@ -21,6 +22,18 @@ def make_output_names(out_dir: str, Ntotal: int, Rppx: float, Rpt: float) -> Tup
     robot  = f"Sensors_withPos_{Ntotal}_{r1}_{r2}.xml"
     os.makedirs(out_dir, exist_ok=True)
     return os.path.join(out_dir, shared), os.path.join(out_dir, robot)
+
+def make_candidate_paths(out_root: str, Ntotal: int, Rppx: float, Rpt: float) -> Dict[str, str]:
+    tag = f"{Ntotal}_{_fmt_num(Rppx)}_{_fmt_num(Rpt)}"
+    cand_dir = os.path.join(out_root, tag)
+    os.makedirs(cand_dir, exist_ok=True)
+    return {
+        "dir": cand_dir,
+        "shared": os.path.join(cand_dir, f"shared_touch_sensors_{tag}.xml"),
+        "robot":  os.path.join(cand_dir, f"Sensors_withPos_{tag}.xml"),
+        "env":    os.path.join(cand_dir, f"manipulate_block_touch_sensors_{tag}.xml"),
+        "tag":    tag,
+    }
 
 def save_text_with_header(path: str, xml: str):
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -524,15 +537,73 @@ def update_includes_by_prefix(tree: ET.ElementTree, new_shared_basename: str, ne
         counts['robot_updated'] += 1
     return counts
 
+def write_standalone_env(template_xml: str, out_env: str, shared_basename: str, robot_basename: str):
+    """Copy template and point its includes to the given basenames (placed in the same folder as out_env)."""
+    tree = ET.parse(template_xml)
+    update_includes_by_prefix(tree, shared_basename, robot_basename)
+    os.makedirs(os.path.dirname(out_env), exist_ok=True)
+    tree.write(out_env, encoding="utf-8", xml_declaration=True)
+
+# =======================
+# 4) HIGH-LEVEL MODES
+# =======================
+
+def build_shared_and_robot(Ap, Apx, At, Ntotal, Rppx, Rpt, Ap1, Ap2, base_xml, out_shared, out_robot, force=False):
+    """Generate shared sensors XML and robot-with-sites XML."""
+    if (not force) and os.path.exists(out_shared) and os.path.exists(out_robot):
+        print(f"[SKIP] Using cached files:\n  {out_shared}\n  {out_robot}")
+        return
+    xml, stats = build_sensor_xml_scaled(Ap, Apx, At, Ntotal, Rppx, Rpt, Ap1, Ap2)
+    save_text_with_header(out_shared, xml)
+    print(f"[OK] Wrote shared sensors: {out_shared}")
+    print(f"     Totals: Np={stats['Np']} Npx={stats['Npx']} Nt={stats['Nt']} (sum {stats['check_sum']})")
+    merge_sites_with_layout(base_xml, out_shared, out_robot)
+    print(f"[OK] Wrote robot hand with sites: {out_robot}")
+
+def build_candidate_standalone(
+    Ntotal, Rppx, Rpt, Ap, Apx, At, Ap1, Ap2,
+    base_xml: str, main_template: str, out_root: str, force=False
+) -> Dict[str, str]:
+    """
+    No side effects. Returns dict with paths:
+      {dir, shared, robot, env, tag}
+    """
+    paths = make_candidate_paths(out_root, Ntotal, Rppx, Rpt)
+    # 1) shared + robot
+    build_shared_and_robot(Ap, Apx, At, Ntotal, Rppx, Rpt, Ap1, Ap2, base_xml, paths["shared"], paths["robot"], force=force)
+    # 2) standalone env that includes the basenames
+    if force or (not os.path.exists(paths["env"])):
+        write_standalone_env(
+            template_xml=main_template,
+            out_env=paths["env"],
+            shared_basename=os.path.basename(paths["shared"]),
+            robot_basename=os.path.basename(paths["robot"]),
+        )
+        print(f"[OK] Wrote standalone env: {paths['env']}")
+    else:
+        print(f"[SKIP] Using cached env: {paths['env']}")
+    return paths
+
 # ==========
 # MAIN CLI
 # ==========
 
 def main():
-    p = argparse.ArgumentParser(description="End-to-end: build sensors → layout sites → update main XML includes, with fixed naming.")
+    p = argparse.ArgumentParser(
+        description="End-to-end: build sensors → layout sites → update main XML (legacy) OR emit standalone per-candidate env (no side effects)."
+    )
     p.add_argument("--base",  required=True, help="Path to base hand XML (bodies + geoms), e.g., assets/hand_base.xml")
-    p.add_argument("--main",  required=True, help="Path to main task XML, e.g., assets/manipulate_block_touch_sensors.xml")
-    p.add_argument("--out-dir", default="assets", help="Directory to write the two generated XML files")
+
+    # Legacy/in-place mode
+    p.add_argument("--main",  help="Path to main task XML to update includes, e.g., assets/manipulate_block_touch_sensors.xml")
+    p.add_argument("--out-dir", default=None, help="Directory to write shared/robot in legacy mode (and update --main includes)")
+
+    # Standalone mode
+    p.add_argument("--standalone", action="store_true", help="Generate a per-candidate folder with shared, robot, and a standalone env (no side effects).")
+    p.add_argument("--template", help="Template task XML used to create the standalone env (defaults to --main if not set).")
+    p.add_argument("--out-root", default="generated", help="Root folder for standalone candidates (each under <N>_<r1>_<r2>/).")
+    p.add_argument("--force", action="store_true", help="Overwrite/cached outputs for this candidate.")
+
     # Allocation / areas / ratios
     p.add_argument("--Ntotal", type=int, required=True)
     p.add_argument("--Rppx", type=float, required=True, help="Palm : Phalanx ratio scale")
@@ -542,23 +613,36 @@ def main():
     p.add_argument("--At",   type=float, required=True, help="Area weight: Tips")
     p.add_argument("--Ap1",  type=float, required=True, help="Palm sub-area 1 (palm)")
     p.add_argument("--Ap2",  type=float, required=True, help="Palm sub-area 2 (lfmetacarpal)")
-    p.add_argument("--backup", action="store_true", help="Backup main XML to .bak before editing")
+
+    # legacy safety
+    p.add_argument("--backup", action="store_true", help="(Legacy mode) Backup main XML to .bak before editing")
+
     args = p.parse_args()
 
-    # Construct canonical output names
+    # Decide mode
+    if args.standalone:
+        template_xml = args.template or args.main
+        if not template_xml:
+            sys.exit("ERROR: --standalone requires --template (or set --main to use as template).")
+        paths = build_candidate_standalone(
+            Ntotal=args.Ntotal, Rppx=args.Rppx, Rpt=args.Rpt,
+            Ap=args.Ap, Apx=args.Apx, At=args.At, Ap1=args.Ap1, Ap2=args.Ap2,
+            base_xml=args.base, main_template=template_xml,
+            out_root=args.out_root, force=args.force
+        )
+        # Emit a small machine-friendly summary for BO loops
+        print(json.dumps(paths, indent=2))
+        return
+
+    # Legacy/in-place mode (backward compatible with your earlier workflow)
+    if not args.main:
+        sys.exit("ERROR: legacy mode requires --main (the task XML to update). Use --standalone to avoid editing files.")
+    if not args.out_dir:
+        sys.exit("ERROR: legacy mode requires --out-dir (where to put shared/robot). Use --standalone to avoid editing files.")
+
     shared_path, robot_path = make_output_names(args.out_dir, args.Ntotal, args.Rppx, args.Rpt)
+    build_shared_and_robot(args.Ap, args.Apx, args.At, args.Ntotal, args.Rppx, args.Rpt, args.Ap1, args.Ap2, args.base, shared_path, robot_path, force=args.force)
 
-    # 1) Build shared sensors XML
-    xml, stats = build_sensor_xml_scaled(args.Ap, args.Apx, args.At, args.Ntotal, args.Rppx, args.Rpt, args.Ap1, args.Ap2)
-    save_text_with_header(shared_path, xml)
-    print(f"[OK] Wrote shared sensors: {shared_path}")
-    print(f"     Totals: Np={stats['Np']} Npx={stats['Npx']} Nt={stats['Nt']} (sum {stats['check_sum']})")
-
-    # 2) Merge & layout sites into robot XML
-    merge_sites_with_layout(args.base, shared_path, robot_path)
-    print(f"[OK] Wrote robot hand with sites: {robot_path}")
-
-    # 3) Update main XML includes to the new canonical filenames (basenames)
     if args.backup:
         with open(args.main, "rb") as src, open(args.main + ".bak", "wb") as dst:
             dst.write(src.read())
