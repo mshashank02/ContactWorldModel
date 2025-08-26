@@ -23,17 +23,27 @@ def make_output_names(out_dir: str, Ntotal: int, Rppx: float, Rpt: float) -> Tup
     os.makedirs(out_dir, exist_ok=True)
     return os.path.join(out_dir, shared), os.path.join(out_dir, robot)
 
-def make_candidate_paths(out_root: str, Ntotal: int, Rppx: float, Rpt: float) -> Dict[str, str]:
+def make_candidate_paths(out_root: str, task: str, Ntotal: int, Rppx: float, Rpt: float) -> Dict[str, str]:
+    # file tag (unchanged in filenames)
     tag = f"{Ntotal}_{_fmt_num(Rppx)}_{_fmt_num(Rpt)}"
-    cand_dir = os.path.join(out_root, tag)
+    # directory tag (now includes the task)
+    dir_tag = f"{task}_{tag}"
+
+    cand_dir = os.path.join(out_root, dir_tag)
     os.makedirs(cand_dir, exist_ok=True)
+
+    env_base = f"manipulate_{task}_touch_sensors_{tag}.xml"
+
     return {
-        "dir": cand_dir,
+        "dir": cand_dir,                                   # e.g., generated/block_90_1_1
         "shared": os.path.join(cand_dir, f"shared_touch_sensors_{tag}.xml"),
         "robot":  os.path.join(cand_dir, f"Sensors_withPos_{tag}.xml"),
-        "env":    os.path.join(cand_dir, f"manipulate_block_touch_sensors_{tag}.xml"),
-        "tag":    tag,
+        "env":    os.path.join(cand_dir, env_base),
+        "env_basename": env_base,
+        "tag":    tag,                                     # keep old tag for filenames/metadata
+        "dir_tag": dir_tag,                                # new: task-prefixed directory tag
     }
+
 
 def save_text_with_header(path: str, xml: str):
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -560,21 +570,38 @@ def build_shared_and_robot(Ap, Apx, At, Ntotal, Rppx, Rpt, Ap1, Ap2, base_xml, o
     merge_sites_with_layout(base_xml, out_shared, out_robot)
     print(f"[OK] Wrote robot hand with sites: {out_robot}")
 
+def resolve_task_template(task: str, explicit_template: str | None, main_fallback: str | None) -> str:
+    """Choose the template XML for the task."""
+    if explicit_template:
+        return explicit_template
+    if main_fallback:
+        return main_fallback
+    # Default guesses (edit if your repo uses different paths/names)
+    defaults = {
+        "block": "assets/manipulate_block_touch_sensors.xml",
+        "egg":   "assets/manipulate_egg_touch_sensors.xml",
+        "pen":   "assets/manipulate_pen_touch_sensors.xml",
+    }
+    if task not in defaults:
+        raise SystemExit(f"ERROR: unknown task {task!r} and no --template given.")
+    return defaults[task]
+
 def build_candidate_standalone(
+    task: str,
     Ntotal, Rppx, Rpt, Ap, Apx, At, Ap1, Ap2,
-    base_xml: str, main_template: str, out_root: str, force=False
+    base_xml: str, template_xml: str, out_root: str, force=False
 ) -> Dict[str, str]:
     """
     No side effects. Returns dict with paths:
-      {dir, shared, robot, env, tag}
+      {dir, shared, robot, env, env_basename, tag}
     """
-    paths = make_candidate_paths(out_root, Ntotal, Rppx, Rpt)
+    paths = make_candidate_paths(out_root, task, Ntotal, Rppx, Rpt)
     # 1) shared + robot
     build_shared_and_robot(Ap, Apx, At, Ntotal, Rppx, Rpt, Ap1, Ap2, base_xml, paths["shared"], paths["robot"], force=force)
     # 2) standalone env that includes the basenames
     if force or (not os.path.exists(paths["env"])):
         write_standalone_env(
-            template_xml=main_template,
+            template_xml=template_xml,
             out_env=paths["env"],
             shared_basename=os.path.basename(paths["shared"]),
             robot_basename=os.path.basename(paths["robot"]),
@@ -594,13 +621,17 @@ def main():
     )
     p.add_argument("--base",  required=True, help="Path to base hand XML (bodies + geoms), e.g., assets/hand_base.xml")
 
+    # Task selection
+    p.add_argument("--task", choices=["block","egg","pen"], default="block",
+                   help="Which task template to use when generating a standalone env (manipulate_<task>_touch_sensors.xml).")
+
     # Legacy/in-place mode
     p.add_argument("--main",  help="Path to main task XML to update includes, e.g., assets/manipulate_block_touch_sensors.xml")
     p.add_argument("--out-dir", default=None, help="Directory to write shared/robot in legacy mode (and update --main includes)")
 
     # Standalone mode
     p.add_argument("--standalone", action="store_true", help="Generate a per-candidate folder with shared, robot, and a standalone env (no side effects).")
-    p.add_argument("--template", help="Template task XML used to create the standalone env (defaults to --main if not set).")
+    p.add_argument("--template", help="Template task XML used to create the standalone env. If omitted, a default matching --task is used, or --main if provided.")
     p.add_argument("--out-root", default="generated", help="Root folder for standalone candidates (each under <N>_<r1>_<r2>/).")
     p.add_argument("--force", action="store_true", help="Overwrite/cached outputs for this candidate.")
 
@@ -621,22 +652,21 @@ def main():
 
     # Decide mode
     if args.standalone:
-        template_xml = args.template or args.main
-        if not template_xml:
-            sys.exit("ERROR: --standalone requires --template (or set --main to use as template).")
+        template_xml = resolve_task_template(args.task, args.template, args.main)
         paths = build_candidate_standalone(
+            task=args.task,
             Ntotal=args.Ntotal, Rppx=args.Rppx, Rpt=args.Rpt,
             Ap=args.Ap, Apx=args.Apx, At=args.At, Ap1=args.Ap1, Ap2=args.Ap2,
-            base_xml=args.base, main_template=template_xml,
+            base_xml=args.base, template_xml=template_xml,
             out_root=args.out_root, force=args.force
         )
         # Emit a small machine-friendly summary for BO loops
         print(json.dumps(paths, indent=2))
         return
 
-    # Legacy/in-place mode (backward compatible with your earlier workflow)
+    # Legacy/in-place mode
     if not args.main:
-        sys.exit("ERROR: legacy mode requires --main (the task XML to update). Use --standalone to avoid editing files.")
+        sys.exit("ERROR: legacy mode requires --main (the task XML to update). Use --standalone for no-side-effects generation.")
     if not args.out_dir:
         sys.exit("ERROR: legacy mode requires --out-dir (where to put shared/robot). Use --standalone to avoid editing files.")
 
