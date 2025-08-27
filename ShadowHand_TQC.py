@@ -1,5 +1,6 @@
 import argparse
 from copy import deepcopy
+from functools import partial
 import gymnasium as gym
 import gymnasium_robotics
 import os
@@ -14,8 +15,19 @@ from wandb.integration.sb3 import WandbCallback
 import warnings
 from custom_envs.hand_block_forward_face_env import MujocoHandBlockForwardFaceTouchEnv
 from custom_envs.hand_block_yaw import MujocoHandBlockYawTouchEnv
+from custom_envs.dynamic_touch_env import DynamicXMLTouchEnv
 from gymnasium.envs.registration import register
 from custom_wrappers.remove_object_state import RemoveObjectStateWrapper
+
+def register_dynamic_env(xml_path: str) -> str:
+    env_id = f"HandManipulateBlock_{hash(xml_path) % 1_000_000}-v1"
+    register(
+        id=env_id,
+        entry_point=partial(DynamicXMLTouchEnv, xml_path=xml_path),
+        max_episode_steps=50,
+    )
+    return env_id
+
 
 register(
     id="HandManipulateBlock_ForwardFaceTouchSensors-v1",
