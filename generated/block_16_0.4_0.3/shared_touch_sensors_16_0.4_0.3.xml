@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mujoco>
+    <sensor>
+
+        <!--PALM-->
+        <touch name="robot0:TS_palm_b0" site="robot0:T_palm_b0"></touch>
+        <touch name="robot0:TS_palm_bl" site="robot0:T_palm_bl"></touch>
+        <touch name="robot0:TS_lfmetacarpal_front" site="robot0:T_lfmetacarpal_front"></touch>
+        <touch name="robot0:TS_lfmetacarpal_auto_001" site="robot0:T_lfmetacarpal_auto_001"></touch>
+
+        <!--FOREFINGER-->
+        <touch name="robot0:TS_ffproximal_front_left_bottom" site="robot0:T_ffproximal_front_left_bottom"></touch>
+        <touch name="robot0:TS_ffmiddle_front_left" site="robot0:T_ffmiddle_front_left"></touch>
+        <touch name="robot0:TS_fftip_front_left" site="robot0:T_fftip_front_left"></touch>
+        <touch name="robot0:TS_fftip_front_right" site="robot0:T_fftip_front_right"></touch>
+
+        <!--MIDDLE FINGER-->
+        <touch name="robot0:TS_mfproximal_front_left_bottom" site="robot0:T_mfproximal_front_left_bottom"></touch>
+        <touch name="robot0:TS_mfmiddle_front_left" site="robot0:T_mfmiddle_front_left"></touch>
+        <touch name="robot0:TS_mftip_front_left" site="robot0:T_mftip_front_left"></touch>
+
+        <!--RING FINGER-->
+        <touch name="robot0:TS_rftip_front_left" site="robot0:T_rftip_front_left"></touch>
+
+        <!--LITTLE FINGER-->
+        <touch name="robot0:TS_lfproximal_front_left_bottom" site="robot0:T_lfproximal_front_left_bottom"></touch>
+        <touch name="robot0:TS_lfmiddle_front_left" site="robot0:T_lfmiddle_front_left"></touch>
+        <touch name="robot0:TS_lftip_front_left" site="robot0:T_lftip_front_left"></touch>
+
+        <!--THUMB-->
+        <touch name="robot0:TS_thtip_front_left" site="robot0:T_thtip_front_left"></touch>
+
+    </sensor>
+</mujoco>

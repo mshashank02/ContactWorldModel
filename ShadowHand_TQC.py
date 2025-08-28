@@ -16,30 +16,9 @@ import warnings
 from custom_envs.hand_block_forward_face_env import MujocoHandBlockForwardFaceTouchEnv
 from custom_envs.hand_block_yaw import MujocoHandBlockYawTouchEnv
 from custom_envs.dynamic_touch_env import DynamicXMLTouchEnv
-from gymnasium.envs.registration import register
 from custom_wrappers.remove_object_state import RemoveObjectStateWrapper
 
-def register_dynamic_env(xml_path: str) -> str:
-    env_id = f"HandManipulateBlock_{hash(xml_path) % 1_000_000}-v1"
-    register(
-        id=env_id,
-        entry_point=partial(DynamicXMLTouchEnv, xml_path=xml_path),
-        max_episode_steps=50,
-    )
-    return env_id
 
-
-register(
-    id="HandManipulateBlock_ForwardFaceTouchSensors-v1",
-    entry_point=MujocoHandBlockForwardFaceTouchEnv,
-    max_episode_steps=50,
-)
-
-register(
-    id="HandManipulateBlock_YawTouch-v1",
-    entry_point=MujocoHandBlockYawTouchEnv,
-    max_episode_steps=50,
-)
 
 # ignore warning. it does not affect the training
 warnings.filterwarnings("ignore", message=".*method is not within the observation space*")
@@ -83,6 +62,8 @@ def parse_args():
     # Environment
     parser.add_argument("--env-id", type=str, default="HandManipulateBlockRotateXYZ-v1",
         help="env id")
+    parser.add_argument("--xml-path", type=str, required=True,
+                        help="Path to generated MuJoCo XML")
     
     # model hyperparameters
     parser.add_argument("--n-timesteps", type=float, default=ENV_HYPERPARAMS["n_timesteps"],
@@ -120,6 +101,11 @@ def parse_args():
         help="wandb run name")
     
     args = parser.parse_args()
+
+    # Normalize to absolute path and sanity-check
+    args.xml_path = os.path.abspath(args.xml_path)
+    if not os.path.isfile(args.xml_path):
+        raise FileNotFoundError(f"XML not found at {args.xml_path}")
     
     # Auto-generate wandb name if not provided
     if args.wandb_name is None:
@@ -127,20 +113,21 @@ def parse_args():
     
     return args
 
-def make_env(env_id, seed, rank):
+def make_env(xml_path, seed, rank):
     def _init():
-        env = gym.make(env_id, render_mode="rgb_array")
-        env = RemoveObjectStateWrapper(env)
+        env = DynamicXMLTouchEnv(xml_path=xml_path, render_mode="rgb_array")
+        
+        #env = RemoveObjectStateWrapper(env)
         env.reset(seed=seed + rank)
         env = Monitor(env)
         env = TimeFeatureWrapper(env)
         return env
     return _init
 
-def make_eval_env(env_id, seed):
+def make_eval_env(xml_path, seed):
     def _init():
-        env = gym.make(env_id, render_mode="rgb_array")
-        env = RemoveObjectStateWrapper(env)
+        env = DynamicXMLTouchEnv(xml_path=xml_path, render_mode="rgb_array")
+        #env = RemoveObjectStateWrapper(env)
         env.reset(seed=seed)
         env = Monitor(env) 
         env = TimeFeatureWrapper(env)
@@ -244,7 +231,6 @@ def evaluate_policy(model, env, n_eval_episodes=10):
 
 if __name__ == "__main__":
     args = parse_args()
-    
     print(f"Starting training with environment: {args.env_id}")
     print(f"Using {args.num_envs} parallel environments")
     print(f"Eval frequency: {args.eval_freq} timesteps")
@@ -297,23 +283,24 @@ if __name__ == "__main__":
     )
     
     # Create parallel environments
+    xml_path = args.xml_path  # passed from generate_and_train
     env = SubprocVecEnv([
-        make_env(args.env_id, args.seed, i) for i in range(args.num_envs)
+        make_env(args.xml_path, args.seed, i)
+        for i in range(args.num_envs)
     ])
-    
+
     normalize_kwargs = {"gamma": hyperparams["gamma"]}
     env = VecNormalize(env, **normalize_kwargs)
-    
-    # Only record video from the first environment
+
     env = VecVideoRecorder(
-        env, 
-        f"videos/{args.env_id}_{args.seed}", 
-        record_video_trigger=lambda x: x % args.model_save_freq == 0, 
+        env,
+        f"videos/{args.env_id}_{args.seed}",
+        record_video_trigger=lambda x: x % args.model_save_freq == 0,
         video_length=200
     )
-    
-    # Create environment for evaluation
-    eval_env = make_eval_env(args.env_id, args.seed)
+
+    # Eval env (also direct)
+    eval_env = make_eval_env(args.xml_path, args.seed)
     eval_env = VecNormalize(eval_env, **normalize_kwargs)
     eval_env.training = False
     eval_env.norm_reward = False
@@ -338,7 +325,7 @@ if __name__ == "__main__":
 
     class EvalAndSaveCallback(WandbCallback):
         def __init__(self, vec_env, eval_env, model, save_freq, eval_freq, eval_episodes, 
-                     save_path, env_id, seed, normalize_kwargs, **kwargs):
+                     save_path, env_id, seed, normalize_kwargs,xml_path, **kwargs):
             super().__init__(**kwargs)
             self.vec_env = vec_env
             self.eval_env = eval_env
@@ -350,6 +337,7 @@ if __name__ == "__main__":
             self.env_id = env_id
             self.seed = seed
             self.normalize_kwargs = normalize_kwargs
+            self.xml_path = xml_path
             self.best_success_rate = 0.0
             
         def _on_step(self):
@@ -404,7 +392,7 @@ if __name__ == "__main__":
                     video_path = f"videos/{self.env_id}_{self.seed}/eval_{self.n_calls}"
                     os.makedirs(video_path, exist_ok=True)
                     
-                    video_eval_env = make_eval_env(self.env_id, self.seed)
+                    video_eval_env = make_eval_env(self.xml_path, self.seed)
                     video_eval_env = VecNormalize(video_eval_env, **self.normalize_kwargs)
                     
                     video_eval_env.obs_rms = deepcopy(self.eval_env.obs_rms)
@@ -516,6 +504,7 @@ if __name__ == "__main__":
         total_timesteps=n_timesteps,
         callback=EvalAndSaveCallback(
             vec_env=env,
+            xml_path=args.xml_path,
             eval_env=eval_env,
             model=model,
             save_freq=args.save_freq,
