@@ -609,6 +609,19 @@ def build_candidate_standalone(
         print(f"[OK] Wrote standalone env: {paths['env']}")
     else:
         print(f"[SKIP] Using cached env: {paths['env']}")
+    
+    # Copy shared assets needed by the standalone environment
+    assets_dir = os.path.dirname(base_xml)
+    for fname in ("shared.xml", "shared_asset.xml"):
+        src = os.path.join(assets_dir, fname)
+        dst = os.path.join(paths["dir"], fname)
+        if not os.path.exists(src):
+            raise FileNotFoundError(f"Required asset file not found: {src}")
+        if force or (not os.path.exists(dst)):
+            shutil.copy2(src, dst)
+            print(f"[OK] Copied asset: {dst}")
+        else:
+            print(f"[SKIP] Using cached asset: {dst}")
     return paths
 
 # ==========
