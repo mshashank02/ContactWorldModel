@@ -622,6 +622,45 @@ def build_candidate_standalone(
             print(f"[OK] Copied asset: {dst}")
         else:
             print(f"[SKIP] Using cached asset: {dst}")
+    # Copy mesh assets referenced by shared_asset.xml
+    shared_asset_path = os.path.join(paths["dir"], "shared_asset.xml")
+    asset_tree = ET.parse(shared_asset_path)
+    mesh_files = {m.get("file") for m in asset_tree.findall(".//mesh") if m.get("file")}
+
+    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(base_xml)))
+    mesh_src_dir = os.path.join(repo_root, "stls", "hand")
+    mesh_dst_dir = os.path.join(out_root, "stls", "hand")
+    os.makedirs(mesh_dst_dir, exist_ok=True)
+
+    for mesh in mesh_files:
+        src = os.path.join(mesh_src_dir, mesh)
+        dst = os.path.join(mesh_dst_dir, os.path.basename(mesh))
+        if not os.path.exists(src):
+            raise FileNotFoundError(f"Mesh file referenced in shared_asset.xml not found: {src}")
+        if force or (not os.path.exists(dst)):
+            shutil.copy2(src, dst)
+            print(f"[OK] Copied mesh: {dst}")
+        else:
+            print(f"[SKIP] Using cached mesh: {dst}")
+
+    # Copy texture assets referenced by the standalone env
+    env_tree = ET.parse(paths["env"])
+    texture_files = {t.get("file") for t in env_tree.findall(".//texture") if t.get("file")}
+
+    texture_src_dir = os.path.join(repo_root, "textures")
+    texture_dst_dir = os.path.join(out_root, "textures")
+    os.makedirs(texture_dst_dir, exist_ok=True)
+
+    for tex in texture_files:
+        src = os.path.join(texture_src_dir, tex)
+        dst = os.path.join(texture_dst_dir, os.path.basename(tex))
+        if not os.path.exists(src):
+            raise FileNotFoundError(f"Texture file referenced in {paths['env']} not found: {src}")
+        if force or (not os.path.exists(dst)):
+            shutil.copy2(src, dst)
+            print(f"[OK] Copied texture: {dst}")
+        else:
+            print(f"[SKIP] Using cached texture: {dst}")
     return paths
 
 # ==========

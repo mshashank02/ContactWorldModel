@@ -10,6 +10,7 @@ from stable_baselines3 import HerReplayBuffer
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import SubprocVecEnv, VecVideoRecorder, VecNormalize, DummyVecEnv
 from sb3_contrib.common.wrappers import TimeFeatureWrapper
+from gymnasium.wrappers import TimeLimit
 import wandb
 from wandb.integration.sb3 import WandbCallback
 import warnings
@@ -113,21 +114,20 @@ def parse_args():
     
     return args
 
-def make_env(xml_path, seed, rank):
+def make_env(xml_path, seed, rank, max_steps = 100):
     def _init():
         env = DynamicXMLTouchEnv(xml_path=xml_path, render_mode="rgb_array")
-        
-        #env = RemoveObjectStateWrapper(env)
+        env = TimeLimit(env, max_episode_steps=max_steps)
         env.reset(seed=seed + rank)
         env = Monitor(env)
         env = TimeFeatureWrapper(env)
         return env
     return _init
 
-def make_eval_env(xml_path, seed):
+def make_eval_env(xml_path, seed, max_steps = 100):
     def _init():
         env = DynamicXMLTouchEnv(xml_path=xml_path, render_mode="rgb_array")
-        #env = RemoveObjectStateWrapper(env)
+        env = TimeLimit(env, max_episode_steps=max_steps)
         env.reset(seed=seed)
         env = Monitor(env) 
         env = TimeFeatureWrapper(env)
