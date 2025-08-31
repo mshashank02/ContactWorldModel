@@ -1,4 +1,5 @@
 import argparse
+import json
 from copy import deepcopy
 from functools import partial
 import gymnasium as gym
@@ -101,6 +102,9 @@ def parse_args():
     parser.add_argument("--wandb-name", type=str, default=None,
         help="wandb run name")
     
+    #GP-BO configs
+    parser.add_argument("--metrics-json", type=str, default=None)
+    parser.add_argument("--task-name", type=str, default=None)
     args = parser.parse_args()
 
     # Normalize to absolute path and sanity-check
@@ -325,7 +329,7 @@ if __name__ == "__main__":
 
     class EvalAndSaveCallback(WandbCallback):
         def __init__(self, vec_env, eval_env, model, save_freq, eval_freq, eval_episodes, 
-                     save_path, env_id, seed, normalize_kwargs,xml_path, **kwargs):
+                     save_path, env_id, seed, normalize_kwargs,xml_path, metrics_path=None, total_timesteps=None, task_label=None, **kwargs):
             super().__init__(**kwargs)
             self.vec_env = vec_env
             self.eval_env = eval_env
@@ -339,11 +343,23 @@ if __name__ == "__main__":
             self.normalize_kwargs = normalize_kwargs
             self.xml_path = xml_path
             self.best_success_rate = 0.0
+
+            #New BO metrics 
+            self.metrics_path = metrics_path
+            self.total_timesteps = int(total_timesteps) if total_timesteps is not None else None
+            self.task_label = (task_label or env_id)
+            self.checkpoint_steps = []
+            self.success_curve = []
+            self._last_eval_ts = 0
+            self._last_save_ts = 0
+
+
             
         def _on_step(self):
             super()._on_step()
+            step_ts = int(self.model.num_timesteps)
             
-            if self.n_calls % self.save_freq == 0:
+            if step_ts - self._last_save_ts >= self.save_freq:
                 stats_path = os.path.join(self.save_path, f"vecnorm_{self.n_calls}.pkl")
                 self.vec_env.save(stats_path)
                 wandb.save(stats_path)
@@ -354,10 +370,12 @@ if __name__ == "__main__":
                 self.model.save(model_path)
                 wandb.save(model_path)
                 print(f"Saved model to {model_path}")
+
+                self._last_save_ts = step_ts
             
             # Run evaluation periodically
-            if self.n_calls % self.eval_freq == 0:
-                print(f"\nRunning evaluation at {self.n_calls} timesteps...")
+            if step_ts - self._last_eval_ts >= self.eval_freq:
+                print(f"\nRunning evaluation at {step_ts} timesteps...")
                 
                 try:
                     self.eval_env.obs_rms = deepcopy(self.vec_env.obs_rms)
@@ -377,6 +395,11 @@ if __name__ == "__main__":
                 wandb.log(eval_metrics, step=self.n_calls)
                 
                 print(f"Evaluation results: {eval_metrics}")
+
+                #Record success curve point 
+                succ = float(eval_metrics.get('eval/success_rate', 0.0))
+                self.checkpoint_steps.append(step_ts)
+                self.success_curve.append(succ)
                 
                 # Save best model based on success rate if available
                 if 'eval/success_rate' in eval_metrics and eval_metrics['eval/success_rate'] > self.best_success_rate:
@@ -496,8 +519,37 @@ if __name__ == "__main__":
                     print(f"Error creating evaluation video: {e}")
                     import traceback
                     traceback.print_exc()
-                
+                self._last_eval_ts = step_ts
+
             return True
+        
+        def _on_training_end(self) -> None:
+            #ensure at least one eval point 
+            step_ts = int(self.model.num_timesteps)
+            if not self.checkpoint_steps or self.checkpoint_steps[-1] < step_ts:
+                eval_metrics = evaluate_policy(self.model, self.eval_env, n_eval_episodes=self.eval_episodes)
+                succ = float(eval_metrics.get('eval/success_rate', 0.0))
+                self.checkpoint_steps.append(step_ts)
+                self.success_curve.append(succ)
+                wandb.log(eval_metrics, step=step_ts)
+            
+            # write BO metrics JSON
+            if self.metrics_path:
+                denom = self.total_timesteps if self.total_timesteps else max(1, step_ts)
+                fracs = [min(1.0, s / denom) for s in self.checkpoint_steps]  # 0..1 axis
+                task = self.task_label
+                data = {
+                    "tasks": [task],
+                    "checkpoints": fracs,
+                    "success": {task: [float(x) for x in self.success_curve]},
+                    "final_success": {task: float(self.success_curve[-1])}
+                }
+                os.makedirs(os.path.dirname(self.metrics_path), exist_ok=True)
+                with open(self.metrics_path, "w") as f:
+                    json.dump(data, f, indent=2)
+
+            # print a simple scalar for fallback parsers
+            print(f"FINAL_SCORE: {self.success_curve[-1]:.6f}")
     
     # Custom callback
     model.learn(
@@ -514,6 +566,12 @@ if __name__ == "__main__":
             env_id=args.env_id,
             seed=args.seed,
             normalize_kwargs=normalize_kwargs,
+            #for GP-BO 
+            metrics_path=args.metrics_json,
+            total_timesteps=n_timesteps,
+            task_label=(args.task_name or args.env_id),
+
+
             gradient_save_freq=args.gradient_save_freq,
             model_save_freq=args.model_save_freq,
             model_save_path=f"models/{args.env_id}",
