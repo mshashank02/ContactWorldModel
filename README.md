@@ -28,6 +28,30 @@ python ShadowHand_TQC.py --env-id HandManipulateBlock_ContinuousTouchSensors-v1 
 
 ---
 
+## Run the BO-GP optimization problem 
+
+`GPBO_sensor_optimize.py` runs the GP Bo optimization loop by calling generate_and_train.py to run simulations.
+
+```
+python bo_botorch.py \
+  --base hand/manipulate_block_touch_sensors.xml \
+  --tasks block,egg,pen \
+  --Ap 1.0 --Apx 1.0 --At 1.0 --Ap1 1.0 --Ap2 1.0 \
+  --N-min 40 --N-max 140 \
+  --alpha-min 0.05 --alpha-max 0.95 \
+  --beta-min 0.05 --beta-max 0.95 \
+  --init 12 --iters 30 --q 6 --device cuda \
+  --bo-root generated/bo_qnei_cuda_multitask \
+  --seeds 0,1,2 \
+  --trainer-args -- \
+      --n-timesteps 300000 \
+      --eval-freq 20000 \
+      --eval-episodes 20 \
+      --save-freq 100000 \
+      --verbose 1
+```
+---
+
 ## Generate a custom touch-sensor configuration and train
 
 `generate_and_train.py` builds a standalone MuJoCo XML with a specified number of touch sensors and launches training.  
