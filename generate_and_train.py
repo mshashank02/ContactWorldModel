@@ -33,7 +33,7 @@ def main():
     xml_abs = os.path.abspath(paths["env"])  # <-- make it absolute
     env_id = stable_env_id(xml_abs)  
 
-    env_id = stable_env_id(paths["env"])           # optional: for naming only
+    #env_id = stable_env_id(paths["env"])           # optional: for naming only
     cmd = [
         "python", "ShadowHand_TQC.py",
         "--env-id", env_id,                        # just for logs/dirs
