@@ -76,7 +76,7 @@ The helper script assigns a stable environment ID using the absolute XML path.
 To produce a standalone environment without launching training:
 
 ```
-python pipeline_generate_and_plug_in.py --standalone \
+python pipeline_generate.py --standalone \
     --base assets/hand_base.xml --task block \
     --Ntotal 16 --Rppx 0.4 --Rpt 0.3 \
     --Ap 0.5 --Apx 0.3 --At 0.2 --Ap1 0.25 --Ap2 0.25 \
@@ -113,3 +113,12 @@ ShadowHand-TQC/
 - Training with **TQC + HER** for sample efficiency  
 - Flexible **sensor configuration pipeline** for exploring design spaces  
 - Ready-to-use XMLs for block rotation and continuous-touch tasks  
+
+Areas of ShadowHand Bodies 
+F1 1575.25 mm2
+F2 2461.81 mm2
+F3 3904.32 mm2
+TH13012. 45 mm2
+TH2 3511. 17 mm2
+TH3 4390.88 mm2
+Metacarpal 6302 mm2
