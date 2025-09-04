@@ -1,5 +1,5 @@
 import argparse, json, sys, subprocess, os
-from pipeline_generate_and_plug_in import build_candidate_standalone, resolve_task_template
+from pipeline_generate import build_candidate_standalone, resolve_task_template
 from registration import stable_env_id
 
 
