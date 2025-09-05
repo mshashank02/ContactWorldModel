@@ -5,3 +5,4 @@ sb3-contrib
 wandb
 imageio
 tensorboard
+botorch
