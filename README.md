@@ -115,10 +115,11 @@ ShadowHand-TQC/
 - Ready-to-use XMLs for block rotation and continuous-touch tasks  
 
 Areas of ShadowHand Bodies 
-F1 1575.25 mm2
-F2 2461.81 mm2
-F3 3904.32 mm2
-TH13012. 45 mm2
-TH2 3511. 17 mm2
-TH3 4390.88 mm2
-Metacarpal 6302 mm2
+F1 1279.4 mm2
+F2 2292.06 mm2
+F3 2612.88 mm2
+TH1 2077.02 mm2
+TH2 3229.7 mm2
+TH3 4040.23 mm2
+Metacarpal 496 mm2
+Palm 5557.01 mm2
