@@ -23,11 +23,11 @@ ap.add_argument("--tasks", default="block,egg,pen")
 ap.add_argument("--seeds", default="0,1,2")
 ap.add_argument("--out-root", default="generated")
 ap.add_argument("--bo-root", default="generated/bo_runs")
-ap.add_argument("--Ap", type=float, required=True)
-ap.add_argument("--Apx", type=float, required=True)
-ap.add_argument("--At", type=float, required=True)
-ap.add_argument("--Ap1", type=float, required=True)
-ap.add_argument("--Ap2", type=float, required=True)
+ap.add_argument("--Ap",   type=float, default= 6557, help="Area weight: Palm")
+ap.add_argument("--Apx",  type=float, default=26885, help="Area weight: Phalanx")
+ap.add_argument("--At",   type=float, default=7193, help="Area weight: Tips")
+ap.add_argument("--Ap1",  type=float, default=5557, help="Palm sub-area 1 (palm)")
+ap.add_argument("--Ap2",  type=float, default=1000, help="Palm sub-area 2 (lfmetacarpal)")
 ap.add_argument("--force", action="store_true")
 ap.add_argument("--eval-episodes", type=int, default=50)
 ap.add_argument("--trainer-extra", nargs=argparse.REMAINDER, default=[])
@@ -70,11 +70,13 @@ def run_one(pt, task, seed):
     if args.force:
         cmd.append("--force")
     # pass-through to trainer
+    wandb_name = f"{task}-N{N}_a{alpha:.4f}_b{beta:.4f}-seed{seed}"
     cmd += ["--",
             "--seed", str(seed),
             "--metrics-json", metrics_path,
             "--task-name", task,
-            "--eval-episodes", str(args.eval_episodes)]
+            "--eval-episodes", str(args.eval_episodes),
+            "--wandb-name", wandb_name]
     if args.trainer_extra:
         cmd += args.trainer_extra
 

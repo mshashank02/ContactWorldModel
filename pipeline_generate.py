@@ -756,11 +756,11 @@ def main():
     p.add_argument("--Ntotal", type=int, required=True)
     p.add_argument("--Rppx", type=float, required=True, help="Palm : Phalanx ratio scale")
     p.add_argument("--Rpt",  type=float, required=True, help="Palm : Tip ratio scale")
-    p.add_argument("--Ap",   type=float, required=True, help="Area weight: Palm")
-    p.add_argument("--Apx",  type=float, required=True, help="Area weight: Phalanx")
-    p.add_argument("--At",   type=float, required=True, help="Area weight: Tips")
-    p.add_argument("--Ap1",  type=float, required=True, help="Palm sub-area 1 (palm)")
-    p.add_argument("--Ap2",  type=float, required=True, help="Palm sub-area 2 (lfmetacarpal)")
+    p.add_argument("--Ap",   type=float, default= 6557, help="Area weight: Palm")
+    p.add_argument("--Apx",  type=float, default=26885, help="Area weight: Phalanx")
+    p.add_argument("--At",   type=float, default=7193, help="Area weight: Tips")
+    p.add_argument("--Ap1",  type=float, default=5557, help="Palm sub-area 1 (palm)")
+    p.add_argument("--Ap2",  type=float, default=1000, help="Palm sub-area 2 (lfmetacarpal)")
 
     # legacy safety
     p.add_argument("--backup", action="store_true", help="(Legacy mode) Backup main XML to .bak before editing")
