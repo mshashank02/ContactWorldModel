@@ -415,9 +415,18 @@ if __name__ == "__main__":
                     
                     video_path = f"videos/{self.env_id}_{self.seed}/eval_{self.n_calls}"
                     os.makedirs(video_path, exist_ok=True)
-                    
+
+                    # fresh env dedicated to video (has render_mode='rgb_array')
+                    video_eval_env = make_eval_env(self.xml_path, self.seed)
+                    video_eval_env = VecNormalize(video_eval_env, **self.normalize_kwargs)
+                    # copy normalization stats so obs are comparable
+                    video_eval_env.obs_rms = deepcopy(self.eval_env.obs_rms)
+                    video_eval_env.ret_rms = deepcopy(self.eval_env.ret_rms)
+                    video_eval_env.training = False
+                    video_eval_env.norm_reward = False
+
                     video_env = VecVideoRecorder(
-                        self.eval_env,
+                        video_eval_env,
                         video_path,
                         record_video_trigger=lambda x: x == 0,  # record only first episode
                         video_length=200,
