@@ -118,9 +118,10 @@ def run_one(pt, task, seed, args, gpu_list, gpu_pool):
     # --- Environment for child process ---
     env = os.environ.copy()
     # Headless MuJoCo + friends
-    env.setdefault("MUJOCO_GL", "egl")
-    env.setdefault("PYOPENGL_PLATFORM", "egl")
-    env.setdefault("SDL_VIDEODRIVER", "dummy")
+    env["MUJOCO_GL"] = "egl"
+    env["PYOPENGL_PLATFORM"] = "egl"
+    env["SDL_VIDEODRIVER"] = "dummy"
+
     # Mirror console to W&B as well
     env.setdefault("WANDB_CONSOLE", "wrap")
 

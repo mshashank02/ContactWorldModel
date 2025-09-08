@@ -120,7 +120,7 @@ def parse_args():
 
 def make_env(xml_path, seed, rank, max_steps = 100):
     def _init():
-        env = DynamicXMLTouchEnv(xml_path=xml_path, render_mode="rgb_array")
+        env = DynamicXMLTouchEnv(xml_path=xml_path, render_mode=None)
         env = TimeLimit(env, max_episode_steps=max_steps)
         env.reset(seed=seed + rank)
         env = Monitor(env)
