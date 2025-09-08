@@ -296,12 +296,12 @@ if __name__ == "__main__":
     normalize_kwargs = {"gamma": hyperparams["gamma"]}
     env = VecNormalize(env, **normalize_kwargs)
 
-    env = VecVideoRecorder(
-        env,
-        f"videos/{args.env_id}_{args.seed}",
-        record_video_trigger=lambda x: x % args.model_save_freq == 0,
-        video_length=200
-    )
+    # env = VecVideoRecorder(
+    #     env,
+    #     f"videos/{args.env_id}_{args.seed}",
+    #     record_video_trigger=lambda x: x % args.model_save_freq == 0,
+    #     video_length=200
+    # )
 
     # Eval env (also direct)
     eval_env = make_eval_env(args.xml_path, args.seed)
