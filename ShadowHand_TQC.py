@@ -48,7 +48,7 @@ def parse_args():
         help="seed of the experiment")
     parser.add_argument("--verbose", type=int, default=2,
             help="the verbosity of the logs")
-    parser.add_argument("--num-envs", type=int, default=16,
+    parser.add_argument("--num-envs", type=int, default=6,
         help="number of parallel environments")
     parser.add_argument("--eval-freq", type=int, default=10000,
         help="frequency of evaluation (in timesteps)")
@@ -290,8 +290,9 @@ if __name__ == "__main__":
     xml_path = args.xml_path  # passed from generate_and_train
     env = SubprocVecEnv([
         make_env(args.xml_path, args.seed, i)
-        for i in range(args.num_envs)
-    ])
+        for i in range(args.num_envs)],
+        start_method="spawn"
+        )
 
     normalize_kwargs = {"gamma": hyperparams["gamma"]}
     env = VecNormalize(env, **normalize_kwargs)
@@ -415,18 +416,8 @@ if __name__ == "__main__":
                     video_path = f"videos/{self.env_id}_{self.seed}/eval_{self.n_calls}"
                     os.makedirs(video_path, exist_ok=True)
                     
-                    video_eval_env = make_eval_env(self.xml_path, self.seed)
-                    video_eval_env = VecNormalize(video_eval_env, **self.normalize_kwargs)
-                    
-                    video_eval_env.obs_rms = deepcopy(self.eval_env.obs_rms)
-                    video_eval_env.ret_rms = deepcopy(self.eval_env.ret_rms)
-                    
-
-                    video_eval_env.training = False
-                    video_eval_env.norm_reward = False
-                    
                     video_env = VecVideoRecorder(
-                        video_eval_env,
+                        self.eval_env,
                         video_path,
                         record_video_trigger=lambda x: x == 0,  # record only first episode
                         video_length=200,
