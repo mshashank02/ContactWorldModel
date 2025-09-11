@@ -54,36 +54,48 @@ for tag in sorted(os.listdir(args.bo_root)):
     trial_dir = os.path.join(args.bo_root, tag)
     if not os.path.isdir(trial_dir): continue
 
+    # --- Skip trial if any task is missing or has no metrics ---
+    skip_trial = False
     per_task = []
     for t in tasks:
         tdir = os.path.join(trial_dir, t)
-        if not os.path.isdir(tdir): continue
-        # average over all seed metrics in this task dir
+        if not os.path.isdir(tdir):
+            print(f"Skipping trial {tag}: missing task directory '{t}'")
+            skip_trial = True
+            break
+
         seed_vals = []
         for fn in os.listdir(tdir):
             if fn.startswith("metrics_") and fn.endswith(".json"):
                 m = load_json(os.path.join(tdir, fn))
                 if m is not None:
                     seed_vals.append(compute_scalar_from_metrics(m))
-        if seed_vals:
-            per_task.append(float(np.nanmean(seed_vals)))
 
-    if per_task:
-        Y = float(np.nanmean(per_task))  # equal weights across tasks
-        Y_hist.append(Y)
-        # recover (N,α,β) from tag "N{N}_a{α}_b{β}"
-        # if you used a hash, parse meta.json instead
-        try:
-            parts = tag.split("_")
-            N = int(parts[0][1:])
-            a = float(parts[1][1:])
-            b = float(parts[2][1:])
-            X_hist.append([N, a, b])
-        except Exception:
-            # fallback to meta.json if present
-            meta = load_json(os.path.join(trial_dir, "meta.json")) or {}
-            X_hist.append([meta.get("N"), meta.get("alpha"), meta.get("beta")])
+        if not seed_vals:
+            print(f"Skipping trial {tag}: no metrics found in '{t}'")
+            skip_trial = True
+            break
+
+        per_task.append(float(np.nanmean(seed_vals)))
+
+    if skip_trial:
+        continue  # skip this trial entirely
+
+    # Compute trial-level average
+    Y = float(np.nanmean(per_task))  # equal weights across tasks
+    Y_hist.append(Y)
+
+    # Recover (N,α,β) from tag "N{N}_a{α}_b{β}" or fallback to meta.json
+    try:
+        parts = tag.split("_")
+        N = int(parts[0][1:])
+        a = float(parts[1][1:])
+        b = float(parts[2][1:])
+        X_hist.append([N, a, b])
+    except Exception:
+        meta = load_json(os.path.join(trial_dir, "meta.json")) or {}
+        X_hist.append([meta.get("N"), meta.get("alpha"), meta.get("beta")])
 
 with open(args.out, "w") as f:
     json.dump({"X": X_hist, "Y": Y_hist, "best": (max(Y_hist) if Y_hist else None)}, f, indent=2)
-print(f"Wrote {len(X_hist)} initial points to {args.out}")
+print(f"Wrote {len(X_hist)} trials with all tasks to {args.out}")
