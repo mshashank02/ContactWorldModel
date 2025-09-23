@@ -21,6 +21,36 @@ def main():
     args, train_args = p.parse_known_args()
     if train_args and train_args[0] == "--":
         train_args = train_args[1:]
+    
+    # -----------------------------
+    # Inject per-task env defaults
+    # -----------------------------
+    # Helpers to detect if user already specified these flags downstream
+    def has_flag(flag: str, argv: list[str]) -> bool:
+        return flag in argv
+
+    def has_opt(opt: str, argv: list[str]) -> bool:
+        # matches --opt <value> or --opt=<value>
+        if opt in argv:
+            return True
+        return any(a.startswith(opt + "=") for a in argv)
+
+    # Desired defaults by task
+    if args.task == "pen":
+        desired_target_position = "ignore"   # no position goal
+        desired_ignore_z = True              # XY-only rotation
+    else:  # block, egg
+        desired_target_position = "random"   # keep position goal
+        desired_ignore_z = False             # full xyz
+
+    # Only append if not already set by the caller
+    if not has_opt("--target-position", train_args):
+        train_args += ["--target-position", desired_target_position]
+
+    # --ignore-z-rot is a boolean flag; only add it when desired and not present
+    if desired_ignore_z and not has_flag("--ignore-z-rot", train_args):
+        train_args += ["--ignore-z-rot"]
+        
     tmpl = resolve_task_template(args.task, None, None)
     paths = build_candidate_standalone(
         task=args.task,

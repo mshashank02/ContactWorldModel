@@ -66,6 +66,13 @@ def parse_args():
         help="env id")
     parser.add_argument("--xml-path", type=str, required=True,
                         help="Path to generated MuJoCo XML")
+    # Env behavior knobs (forwarded to MujocoManipulateTouchSensorsEnv)
+    parser.add_argument("--target-position", type=str, default="random",
+        choices=["random", "ignore"], help="goal position usage")
+    parser.add_argument("--ignore-z-rot", action="store_true",
+        help="if set, ignore Z axis in rotation error (XY-only rotate)")
+    parser.add_argument("--target-rotation", type=str, default="xyz",
+        choices=["xyz"], help="rotation axes spec (kept for completeness)")
     
     # model hyperparameters
     parser.add_argument("--n-timesteps", type=float, default=ENV_HYPERPARAMS["n_timesteps"],
@@ -118,9 +125,15 @@ def parse_args():
     
     return args
 
-def make_env(xml_path, seed, rank, max_steps = 100):
+def make_env(xml_path, seed, rank, target_position, target_rotation, ignore_z_rot, max_steps=100):
     def _init():
-        env = DynamicXMLTouchEnv(xml_path=xml_path, render_mode=None)
+        env = DynamicXMLTouchEnv(
+            xml_path=xml_path,
+            target_position=target_position,
+            target_rotation=target_rotation,
+            ignore_z_target_rotation=ignore_z_rot,
+            render_mode=None,
+        )
         env = TimeLimit(env, max_episode_steps=max_steps)
         env.reset(seed=seed + rank)
         env = Monitor(env)
@@ -128,15 +141,21 @@ def make_env(xml_path, seed, rank, max_steps = 100):
         return env
     return _init
 
-def make_eval_env(xml_path, seed, max_steps = 100):
+def make_eval_env(xml_path, seed, target_position, target_rotation, ignore_z_rot, max_steps=100):
     def _init():
-        env = DynamicXMLTouchEnv(xml_path=xml_path, render_mode="rgb_array")
+        env = DynamicXMLTouchEnv(
+            xml_path=xml_path,
+            target_position=target_position,
+            target_rotation=target_rotation,
+            ignore_z_target_rotation=ignore_z_rot,
+            render_mode="rgb_array",
+        )
         env = TimeLimit(env, max_episode_steps=max_steps)
         env.reset(seed=seed)
-        env = Monitor(env) 
+        env = Monitor(env)
         env = TimeFeatureWrapper(env)
         return env
-    
+
     env = DummyVecEnv([_init])
     env.seed(seed + 1000)
     return env
@@ -289,7 +308,10 @@ if __name__ == "__main__":
     # Create parallel environments
     xml_path = args.xml_path  # passed from generate_and_train
     env = SubprocVecEnv([
-        make_env(args.xml_path, args.seed, i)
+        make_env(
+                 args.xml_path, args.seed, i,
+                 args.target_position, args.target_rotation, args.ignore_z_rot
+                 )
         for i in range(args.num_envs)],
         start_method="spawn"
         )
@@ -305,7 +327,9 @@ if __name__ == "__main__":
     # )
 
     # Eval env (also direct)
-    eval_env = make_eval_env(args.xml_path, args.seed)
+    eval_env = make_eval_env(args.xml_path, args.seed,
+                             args.target_position, args.target_rotation, args.ignore_z_rot
+                             )
     eval_env = VecNormalize(eval_env, **normalize_kwargs)
     eval_env.training = False
     eval_env.norm_reward = False
@@ -330,7 +354,9 @@ if __name__ == "__main__":
 
     class EvalAndSaveCallback(WandbCallback):
         def __init__(self, vec_env, eval_env, model, save_freq, eval_freq, eval_episodes, 
-                     save_path, env_id, seed, normalize_kwargs,xml_path, metrics_path=None, total_timesteps=None, task_label=None, **kwargs):
+                 save_path, env_id, seed, normalize_kwargs, xml_path,
+                 target_position, target_rotation, ignore_z_rot,
+                 metrics_path=None, total_timesteps=None, task_label=None, **kwargs):
             super().__init__(**kwargs)
             self.vec_env = vec_env
             self.eval_env = eval_env
@@ -343,6 +369,9 @@ if __name__ == "__main__":
             self.seed = seed
             self.normalize_kwargs = normalize_kwargs
             self.xml_path = xml_path
+            self.target_position = target_position
+            self.target_rotation = target_rotation
+            self.ignore_z_rot = ignore_z_rot
             self.best_success_rate = 0.0
 
             #New BO metrics 
@@ -417,7 +446,8 @@ if __name__ == "__main__":
                     os.makedirs(video_path, exist_ok=True)
 
                     # fresh env dedicated to video (has render_mode='rgb_array')
-                    video_eval_env = make_eval_env(self.xml_path, self.seed)
+                    video_eval_env = make_eval_env(self.xml_path, self.seed,
+                                  self.target_position, self.target_rotation, self.ignore_z_rot)
                     video_eval_env = VecNormalize(video_eval_env, **self.normalize_kwargs)
                     # copy normalization stats so obs are comparable
                     video_eval_env.obs_rms = deepcopy(self.eval_env.obs_rms)
@@ -557,6 +587,9 @@ if __name__ == "__main__":
         callback=EvalAndSaveCallback(
             vec_env=env,
             xml_path=args.xml_path,
+            target_position=args.target_position,
+            target_rotation=args.target_rotation,
+            ignore_z_rot=args.ignore_z_rot,
             eval_env=eval_env,
             model=model,
             save_freq=args.save_freq,

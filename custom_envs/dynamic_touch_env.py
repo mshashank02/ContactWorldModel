@@ -9,6 +9,7 @@ class DynamicXMLTouchEnv(MujocoManipulateTouchSensorsEnv, EzPickle):
                  xml_path,
                  target_position = "random",
                  target_rotation = "xyz",
+                 ignore_z_target_rotation=False,
                  touch_get_obs = "sensordata",
                  reward_type = "sparse", 
                  **kwargs,
@@ -21,6 +22,7 @@ class DynamicXMLTouchEnv(MujocoManipulateTouchSensorsEnv, EzPickle):
             target_position=target_position,
             target_position_range=np.array([(-0.04, 0.04), (-0.06, 0.02), (0.0, 0.06)]),
             reward_type=reward_type,
+            ignore_z_target_rotation=ignore_z_target_rotation,
             **kwargs,
         )
         EzPickle.__init__(
@@ -28,6 +30,7 @@ class DynamicXMLTouchEnv(MujocoManipulateTouchSensorsEnv, EzPickle):
             xml_path,
             target_position,
             target_rotation,
+            ignore_z_target_rotation,
             touch_get_obs,
             reward_type,
             **kwargs
