@@ -50,11 +50,11 @@ def parse_args():
             help="the verbosity of the logs")
     parser.add_argument("--num-envs", type=int, default=6,
         help="number of parallel environments")
-    parser.add_argument("--eval-freq", type=int, default=10000,
+    parser.add_argument("--eval-freq", type=int, default=20000,
         help="frequency of evaluation (in timesteps)")
     parser.add_argument("--eval-episodes", type=int, default=50,
         help="number of episodes for evaluation")
-    parser.add_argument("--save-freq", type=int, default=50000,
+    parser.add_argument("--save-freq", type=int, default=200000,
         help="frequency of saving model and stats (in timesteps)")
     parser.add_argument("--gradient-save-freq", type=int, default=100000,
         help="frequency of saving gradients (in timesteps)")
