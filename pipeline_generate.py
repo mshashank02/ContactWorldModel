@@ -45,6 +45,37 @@ def make_candidate_paths(out_root: str, task: str, Ntotal: int, Rppx: float, Rpt
     }
 
 
+def _sanitize_task_label(s: str) -> str:
+    s = os.path.splitext(os.path.basename(s))[0]
+    s = re.sub(r"[^A-Za-z0-9]+", "_", s).strip("_").lower()
+    return s or "custom"
+
+
+def parse_task_arg(task_arg: str) -> Dict[str, str | None]:
+    """Parse --task which may be a built-in task name or a custom .msh path."""
+    builtins = {"block", "egg", "pen"}
+    if task_arg in builtins:
+        return {
+            "template_task": task_arg,
+            "task_label": task_arg,
+            "custom_msh": None,
+        }
+
+    if task_arg.lower().endswith(".msh"):
+        msh_path = os.path.abspath(task_arg)
+        if not os.path.isfile(msh_path):
+            raise SystemExit(f"ERROR: custom mesh file not found: {msh_path}")
+        return {
+            "template_task": "block",  # use block task XML as the base task wrapper
+            "task_label": f"custom_{_sanitize_task_label(msh_path)}",
+            "custom_msh": msh_path,
+        }
+
+    raise SystemExit(
+        "ERROR: --task must be one of {block, egg, pen} or a path to a .msh file."
+    )
+
+
 def save_text_with_header(path: str, xml: str):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
@@ -619,6 +650,74 @@ def write_standalone_env(template_xml: str, out_env: str, shared_basename: str, 
     os.makedirs(os.path.dirname(out_env), exist_ok=True)
     tree.write(out_env, encoding="utf-8", xml_declaration=True)
 
+
+def patch_env_object_to_custom_msh(
+    env_xml: str,
+    msh_file_for_xml: str,
+    *,
+    object_mass: float = 0.5,
+    object_inertia: str = "1e-3 1e-3 1e-3",
+    object_pos: str = "1 0.87 0.4",
+    flex_scale: str = "0.025 0.025 0.025",
+    flex_radius: str = "0.001",
+):
+    """
+    Replace the default block geoms in <body name='object'> with a rigid flexcomp from a .msh file.
+    Keeps the free joint and object:center site names used by the task code.
+    """
+    tree = ET.parse(env_xml)
+    root = tree.getroot()
+    worldbody = root.find("worldbody")
+    if worldbody is None:
+        raise SystemExit(f"ERROR: no <worldbody> in {env_xml}")
+
+    object_body = None
+    for body in worldbody.findall("body"):
+        if body.get("name") == "object":
+            object_body = body
+            break
+    if object_body is None:
+        raise SystemExit(f"ERROR: no <body name='object'> found in {env_xml}")
+
+    # Preserve ordering expected by other tooling: joint + inertial + flexcomp + site.
+    object_body.set("pos", object_pos)
+    for ch in list(object_body):
+        object_body.remove(ch)
+
+    ET.SubElement(
+        object_body,
+        "joint",
+        {"name": "object:joint", "type": "free", "damping": "0.05"},
+    )
+    ET.SubElement(
+        object_body,
+        "inertial",
+        {"pos": "0 0 0", "mass": str(object_mass), "diaginertia": object_inertia},
+    )
+    flex = ET.SubElement(
+        object_body,
+        "flexcomp",
+        {
+            "name": "soft",
+            "type": "gmsh",
+            "file": msh_file_for_xml,
+            "dim": "3",
+            "dof": "trilinear",
+            "pos": "0 0 0",
+            "scale": flex_scale,
+            "radius": flex_radius,
+            "rigid": "true",
+        },
+    )
+    ET.SubElement(flex, "contact", {"selfcollide": "none", "internal": "false"})
+    ET.SubElement(
+        object_body,
+        "site",
+        {"name": "object:center", "pos": "0 0 0", "rgba": "1 0 0 0", "size": "0.01 0.01 0.01"},
+    )
+
+    tree.write(env_xml, encoding="utf-8", xml_declaration=True)
+
 # =======================
 # 4) HIGH-LEVEL MODES
 # =======================
@@ -654,7 +753,8 @@ def resolve_task_template(task: str, explicit_template: str | None, main_fallbac
 def build_candidate_standalone(
     task: str,
     Ntotal, Rppx, Rpt, Ap, Apx, At, Ap1, Ap2,
-    base_xml: str, template_xml: str, out_root: str, force=False
+    base_xml: str, template_xml: str, out_root: str, force=False,
+    custom_msh: str | None = None,
 ) -> Dict[str, str]:
     """
     No side effects. Returns dict with paths:
@@ -671,9 +771,25 @@ def build_candidate_standalone(
             shared_basename=os.path.basename(paths["shared"]),
             robot_basename=os.path.basename(paths["robot"]),
         )
+        if custom_msh:
+            # The task XML compiler uses meshdir="../stls/hand", so place the custom .msh there.
+            custom_mesh_dst_dir = os.path.join(out_root, "stls", "hand")
+            os.makedirs(custom_mesh_dst_dir, exist_ok=True)
+            msh_dst = os.path.join(custom_mesh_dst_dir, os.path.basename(custom_msh))
+            if force or (not os.path.exists(msh_dst)):
+                shutil.copy2(custom_msh, msh_dst)
+                print(f"[OK] Copied custom .msh: {msh_dst}")
+            patch_env_object_to_custom_msh(paths["env"], os.path.basename(msh_dst))
         print(f"[OK] Wrote standalone env: {paths['env']}")
     else:
         print(f"[SKIP] Using cached env: {paths['env']}")
+        if custom_msh:
+            custom_mesh_dst_dir = os.path.join(out_root, "stls", "hand")
+            os.makedirs(custom_mesh_dst_dir, exist_ok=True)
+            msh_dst = os.path.join(custom_mesh_dst_dir, os.path.basename(custom_msh))
+            if force or (not os.path.exists(msh_dst)):
+                shutil.copy2(custom_msh, msh_dst)
+                print(f"[OK] Copied custom .msh: {msh_dst}")
     
     # Copy shared assets needed by the standalone environment
     assets_dir = os.path.dirname(base_xml)
@@ -739,8 +855,8 @@ def main():
     p.add_argument("--base",  required=True, help="Path to base hand XML (bodies + geoms), e.g., assets/hand_base.xml")
 
     # Task selection
-    p.add_argument("--task", choices=["block","egg","pen"], default="block",
-                   help="Which task template to use when generating a standalone env (manipulate_<task>_touch_sensors.xml).")
+    p.add_argument("--task", default="block",
+                   help="Built-in task name (block/egg/pen) OR path to a custom .msh file (uses block template and patches object body).")
 
     # Legacy/in-place mode
     p.add_argument("--main",  help="Path to main task XML to update includes, e.g., assets/manipulate_block_touch_sensors.xml")
@@ -766,16 +882,18 @@ def main():
     p.add_argument("--backup", action="store_true", help="(Legacy mode) Backup main XML to .bak before editing")
 
     args = p.parse_args()
+    task_cfg = parse_task_arg(args.task)
 
     # Decide mode
     if args.standalone:
-        template_xml = resolve_task_template(args.task, args.template, args.main)
+        template_xml = resolve_task_template(task_cfg["template_task"], args.template, args.main)
         paths = build_candidate_standalone(
-            task=args.task,
+            task=task_cfg["task_label"],
             Ntotal=args.Ntotal, Rppx=args.Rppx, Rpt=args.Rpt,
             Ap=args.Ap, Apx=args.Apx, At=args.At, Ap1=args.Ap1, Ap2=args.Ap2,
             base_xml=args.base, template_xml=template_xml,
-            out_root=args.out_root, force=args.force
+            out_root=args.out_root, force=args.force,
+            custom_msh=task_cfg["custom_msh"],
         )
         # Emit a small machine-friendly summary for BO loops
         print(json.dumps(paths, indent=2))
