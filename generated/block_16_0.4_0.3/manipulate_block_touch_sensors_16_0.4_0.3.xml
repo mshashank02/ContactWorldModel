@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <mujoco>
     <compiler angle="radian" coordinate="local" meshdir="../stls/hand" texturedir="../textures" />
-    <option timestep="0.001" integrator="implicitfast" solver="CG" tolerance="1e-6" iterations="50" apirate="200">
+    <option timestep="0.0001" integrator="implicitfast" solver="Newton" tolerance="1e-8" iterations="100" apirate="200">
         <flag warmstart="enable" />
     </option>
     
@@ -22,7 +22,7 @@
     </asset>
 
     <worldbody>
-        <geom name="floor0" pos="1 1 0" size="1 1 1" type="plane" condim="3" material="floor_mat" />
+        <geom name="floor0" pos="1 1 0" size="1 1 1" type="plane" condim="1" material="floor_mat" />
         <body name="floor0" pos="1 1 0" />
 
         <include file="Sensors_withPos_16_0.4_0.3.xml" /> 
@@ -30,15 +30,17 @@
         <body name="object" pos="1 0.87 0.4">
             <!-- Keep the free joint so the object can move in the hand task -->
             <joint name="object:joint" type="free" damping="0.05" />
-            <inertial pos="0 0 0" mass="0.5" diaginertia="1e-3 1e-3 1e-3"/>
-            <!-- Deformable object -->
+            <inertial pos="0 0 0" diaginertia="1e-3 1e-3 1e-3"  mass="0.05"/>
+            <!-- Deformable object young="5e6 possion = 0.03 damping = 0.001 -->
             <flexcomp name="soft" type="gmsh"
-                        file="/home/mshashank02/SoftObjectsV2/objects_sphere/sphere_macro_high_rough_high.obj_.msh"
+                        file="/home/mshashank02/SoftObjectsV2/objects_sphere/sphere_macro_high_rough_high_sweep/sphere_macro_high_rough_high_lr_0p12.msh"
                         dim="3" dof="trilinear"
                         pos="0 0 0" scale="0.025 0.025 0.025"
-                        radius="0.001" rigid="true"
+                        radius="0.001" rigid="false"
                         rgba="0.7 0.8 1.0 0.5">
-                <contact selfcollide="none" internal="false"/>
+                <elasticity young="1e5" poisson="0.03" damping="0.001"/>
+                  
+                <contact selfcollide="none" internal="false" friction="0.5 0.005 0.0001"/>
             </flexcomp>
 
             <!-- Keep a site for task observations / reward code that expects it -->
