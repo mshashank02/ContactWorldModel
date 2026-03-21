@@ -1,12 +1,20 @@
 import argparse, json, sys, subprocess, os
-from pipeline_generate import build_candidate_standalone, resolve_task_template
+from pipeline_generate import (
+    build_candidate_standalone,
+    resolve_task_template,
+    parse_task_arg,
+)
 from registration import stable_env_id
 
 
 def main():
     p = argparse.ArgumentParser()
     p.add_argument('--base', required=True)
-    p.add_argument('--task', choices=['block','egg','pen'], default='block')
+    p.add_argument(
+        '--task',
+        default='block',
+        help="Built-in task name (block/egg/pen) OR absolute path to a custom .msh file.",
+    )
     p.add_argument("--Ntotal", type=int, required=True)
     p.add_argument('--Rppx', type=float, required=True)
     p.add_argument('--Rpt',  type=float, required=True)
@@ -21,6 +29,8 @@ def main():
     args, train_args = p.parse_known_args()
     if train_args and train_args[0] == "--":
         train_args = train_args[1:]
+
+    task_cfg = parse_task_arg(args.task)
     
     # -----------------------------
     # Inject per-task env defaults
@@ -36,7 +46,7 @@ def main():
         return any(a.startswith(opt + "=") for a in argv)
 
     # Desired defaults by task
-    if args.task == "pen":
+    if task_cfg["template_task"] == "pen":
         desired_target_position = "ignore"   # no position goal
         desired_ignore_z = True              # XY-only rotation
     else:  # block, egg
@@ -51,13 +61,14 @@ def main():
     if desired_ignore_z and not has_flag("--ignore-z-rot", train_args):
         train_args += ["--ignore-z-rot"]
         
-    tmpl = resolve_task_template(args.task, None, None)
+    tmpl = resolve_task_template(task_cfg["template_task"], None, None)
     paths = build_candidate_standalone(
-        task=args.task,
+        task=task_cfg["task_label"],
         Ntotal=args.Ntotal, Rppx=args.Rppx, Rpt=args.Rpt,
         Ap=args.Ap, Apx=args.Apx, At=args.At, Ap1=args.Ap1, Ap2=args.Ap2,
         base_xml=args.base, template_xml=tmpl,
-        out_root=args.out_root, force=args.force
+        out_root=args.out_root, force=args.force,
+        custom_msh=task_cfg["custom_msh"],
     )
 
     xml_abs = os.path.abspath(paths["env"])  # <-- make it absolute

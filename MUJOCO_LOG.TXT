@@ -871,3 +871,831 @@ WARNING: Nan, Inf or huge value in QACC at DOF 27. The simulation is unstable. T
 Mon Mar  2 16:52:09 2026
 WARNING: Nan, Inf or huge value in QACC at DOF 24. The simulation is unstable. Time = 0.0300.
 
+Tue Mar  3 10:56:30 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 30. The simulation is unstable. Time = 4.1419.
+
+Fri Mar 20 14:45:54 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:54 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 31. The simulation is unstable. Time = 0.0320.
+
+Fri Mar 20 14:45:54 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:54 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:54 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:54 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:54 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:54 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:54 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:54 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:54 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:54 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:54 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:54 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:54 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:54 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:54 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:54 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:54 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:54 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:54 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:54 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:54 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:54 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:55 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:55 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:55 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:55 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:55 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:55 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:55 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:55 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:55 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:55 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:55 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:55 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:55 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:55 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:55 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:55 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:55 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:55 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:55 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:55 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:55 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:55 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:55 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:55 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:55 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:55 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:55 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:56 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:56 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:56 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:56 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:56 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:56 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:56 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:56 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:56 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:56 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:56 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:56 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:56 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:56 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:56 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:56 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:56 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:56 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:56 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:56 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:56 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:56 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:56 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:56 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:56 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:57 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:57 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:57 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:57 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:57 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:57 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:57 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:57 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:57 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:57 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:57 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:57 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:57 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:57 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:57 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:57 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:57 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:57 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:57 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:57 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:57 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:57 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:57 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:57 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:57 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:57 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:58 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:58 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:58 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:58 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:58 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:58 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:58 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:58 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:58 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:58 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:58 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:58 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:58 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:58 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:58 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:58 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:58 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:58 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:58 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:58 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:58 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:58 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:58 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:58 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:58 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:58 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:59 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:59 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:59 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:59 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:59 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:59 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:59 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:59 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:59 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:59 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:59 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:59 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:59 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:59 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:59 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:59 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:59 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:59 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:59 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:59 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:59 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:59 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:59 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:59 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:45:59 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:00 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:00 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:00 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:00 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:00 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:00 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:00 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:00 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:00 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:00 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:00 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:00 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:00 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:00 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:00 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:00 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:00 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:00 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:00 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:00 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:00 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:00 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:00 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:00 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:00 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:01 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:01 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:01 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:01 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:01 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:01 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:01 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:01 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:01 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:01 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:01 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:01 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:01 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:01 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:01 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:01 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:01 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:01 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:01 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:01 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:01 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:01 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:01 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:01 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:01 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:02 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:02 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:02 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:02 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:02 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:02 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:02 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:02 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:02 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:02 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:02 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:02 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:02 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:02 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:02 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:02 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:02 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:02 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:02 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:02 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:02 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:02 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:02 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:02 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:02 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:03 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:03 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:03 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:03 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:03 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:03 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:03 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:03 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:03 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:03 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:03 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:03 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:03 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:03 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:03 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:03 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:03 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:03 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:03 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:03 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:03 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:03 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:03 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:03 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:03 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:04 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:04 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:04 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:04 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:04 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:04 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:04 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:04 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:46:04 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.0300.
+
+Fri Mar 20 14:53:05 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 0.8036.
+
+Fri Mar 20 14:57:11 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.7932.
+
+Fri Mar 20 14:59:42 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 1.2035.
+
+Fri Mar 20 17:14:33 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 1000) Time = 0.1478.
+
+Fri Mar 20 17:14:33 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.1478.
+
+Fri Mar 20 17:15:57 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.1567.
+
+Fri Mar 20 17:18:13 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 1000) Time = 0.1478.
+
+Fri Mar 20 17:18:13 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.1478.
+
+Fri Mar 20 17:18:29 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 1000) Time = 0.1445.
+
+Fri Mar 20 17:18:32 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.1532.
+
+Fri Mar 20 17:18:53 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.1558.
+
+Fri Mar 20 17:19:05 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 1000) Time = 0.1442.
+
+Fri Mar 20 17:19:07 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 1000) Time = 0.1811.
+

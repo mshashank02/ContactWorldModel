@@ -655,6 +655,7 @@ def patch_env_object_to_custom_msh(
     env_xml: str,
     msh_file_for_xml: str,
     *,
+    deformable: bool = False,
     object_mass: float = 0.5,
     object_inertia: str = "1e-3 1e-3 1e-3",
     object_pos: str = "1 0.87 0.4",
@@ -662,7 +663,7 @@ def patch_env_object_to_custom_msh(
     flex_radius: str = "0.001",
 ):
     """
-    Replace the default block geoms in <body name='object'> with a rigid flexcomp from a .msh file.
+    Replace the default block geoms in <body name='object'> with a custom .msh flexcomp.
     Keeps the free joint and object:center site names used by the task code.
     """
     tree = ET.parse(env_xml)
@@ -670,6 +671,26 @@ def patch_env_object_to_custom_msh(
     worldbody = root.find("worldbody")
     if worldbody is None:
         raise SystemExit(f"ERROR: no <worldbody> in {env_xml}")
+
+    if deformable:
+        # Match stable deformable simulation settings from stable_row1.
+        option = root.find("option")
+        if option is not None:
+            option.set("timestep", "0.0001")
+            option.set("integrator", "implicitfast")
+            option.set("solver", "CG")
+            option.set("tolerance", "1e-8")
+            option.set("iterations", "100")
+            option.set("apirate", "200")
+            flag = option.find("flag")
+            if flag is None:
+                ET.SubElement(option, "flag", {"warmstart": "enable"})
+            else:
+                flag.set("warmstart", "enable")
+
+        floor0_geom = worldbody.find("./geom[@name='floor0']")
+        if floor0_geom is not None:
+            floor0_geom.set("condim", "1")
 
     object_body = None
     for body in worldbody.findall("body"):
@@ -684,37 +705,120 @@ def patch_env_object_to_custom_msh(
     for ch in list(object_body):
         object_body.remove(ch)
 
-    ET.SubElement(
-        object_body,
-        "joint",
-        {"name": "object:joint", "type": "free", "damping": "0.05"},
-    )
-    ET.SubElement(
-        object_body,
-        "inertial",
-        {"pos": "0 0 0", "mass": str(object_mass), "diaginertia": object_inertia},
-    )
-    flex = ET.SubElement(
-        object_body,
-        "flexcomp",
-        {
-            "name": "soft",
-            "type": "gmsh",
-            "file": msh_file_for_xml,
-            "dim": "3",
-            "dof": "trilinear",
-            "pos": "0 0 0",
-            "scale": flex_scale,
-            "radius": flex_radius,
-            "rigid": "true",
-        },
-    )
-    ET.SubElement(flex, "contact", {"selfcollide": "none", "internal": "false"})
-    ET.SubElement(
-        object_body,
-        "site",
-        {"name": "object:center", "pos": "0 0 0", "rgba": "1 0 0 0", "size": "0.01 0.01 0.01"},
-    )
+    ET.SubElement(object_body, "joint", {"name": "object:joint", "type": "free", "damping": "0.05"})
+
+    if deformable:
+        # Match stable deformable-object parameters used by the reference stable_row1 XML.
+        object_body.set("pos", "1 0.87 0.2")
+        object_body.set("quat", "1 0 0 0")
+        ET.SubElement(
+            object_body,
+            "inertial",
+            {"pos": "0 0 0", "mass": "0.07", "diaginertia": "1e-3 1e-3 1e-3"},
+        )
+        flex = ET.SubElement(
+            object_body,
+            "flexcomp",
+            {
+                "name": "soft",
+                "type": "gmsh",
+                "file": msh_file_for_xml,
+                "dim": "3",
+                "dof": "trilinear",
+                "pos": "0 0 0",
+                "scale": "0.025 0.025 0.025",
+                "radius": "0.001",
+                "rigid": "false",
+                "rgba": "0.7 0.8 1.0 0.5",
+            },
+        )
+        ET.SubElement(
+            flex,
+            "elasticity",
+            {"young": "1000000.0", "poisson": "0.45", "damping": "0.001"},
+        )
+        ET.SubElement(
+            flex,
+            "contact",
+            {"selfcollide": "none", "internal": "false", "friction": "1 0.005 0.0001"},
+        )
+        ET.SubElement(
+            object_body,
+            "site",
+            {"name": "object:center", "pos": "0 0 0", "rgba": "1 0 0 1", "size": "0.001 0.001 0.001"},
+        )
+        ET.SubElement(object_body, "site", {"name": "obj:x", "pos": "0.03 0 0", "size": "0.004", "rgba": "1 0 0 1"})
+        ET.SubElement(object_body, "site", {"name": "obj:y", "pos": "0 0.03 0", "size": "0.004", "rgba": "0 1 0 1"})
+        ET.SubElement(object_body, "site", {"name": "obj:z", "pos": "0 0 0.03", "size": "0.004", "rgba": "0 0 1 1"})
+        ET.SubElement(
+            object_body,
+            "geom",
+            {
+                "name": "obj:x_axis",
+                "type": "capsule",
+                "fromto": "0 0 0 0.03 0 0",
+                "size": "0.0015",
+                "rgba": "1 0 0 1",
+                "contype": "0",
+                "conaffinity": "0",
+                "group": "3",
+            },
+        )
+        ET.SubElement(
+            object_body,
+            "geom",
+            {
+                "name": "obj:y_axis",
+                "type": "capsule",
+                "fromto": "0 0 0 0 0.03 0",
+                "size": "0.0015",
+                "rgba": "0 1 0 1",
+                "contype": "0",
+                "conaffinity": "0",
+                "group": "3",
+            },
+        )
+        ET.SubElement(
+            object_body,
+            "geom",
+            {
+                "name": "obj:z_axis",
+                "type": "capsule",
+                "fromto": "0 0 0 0 0 0.03",
+                "size": "0.0015",
+                "rgba": "0 0 1 1",
+                "contype": "0",
+                "conaffinity": "0",
+                "group": "3",
+            },
+        )
+    else:
+        ET.SubElement(
+            object_body,
+            "inertial",
+            {"pos": "0 0 0", "mass": str(object_mass), "diaginertia": object_inertia},
+        )
+        flex = ET.SubElement(
+            object_body,
+            "flexcomp",
+            {
+                "name": "soft",
+                "type": "gmsh",
+                "file": msh_file_for_xml,
+                "dim": "3",
+                "dof": "trilinear",
+                "pos": "0 0 0",
+                "scale": flex_scale,
+                "radius": flex_radius,
+                "rigid": "true",
+            },
+        )
+        ET.SubElement(flex, "contact", {"selfcollide": "none", "internal": "false"})
+        ET.SubElement(
+            object_body,
+            "site",
+            {"name": "object:center", "pos": "0 0 0", "rgba": "1 0 0 0", "size": "0.01 0.01 0.01"},
+        )
 
     tree.write(env_xml, encoding="utf-8", xml_declaration=True)
 
@@ -755,6 +859,7 @@ def build_candidate_standalone(
     Ntotal, Rppx, Rpt, Ap, Apx, At, Ap1, Ap2,
     base_xml: str, template_xml: str, out_root: str, force=False,
     custom_msh: str | None = None,
+    deformable_object: bool = False,
 ) -> Dict[str, str]:
     """
     No side effects. Returns dict with paths:
@@ -779,7 +884,11 @@ def build_candidate_standalone(
             if force or (not os.path.exists(msh_dst)):
                 shutil.copy2(custom_msh, msh_dst)
                 print(f"[OK] Copied custom .msh: {msh_dst}")
-            patch_env_object_to_custom_msh(paths["env"], os.path.basename(msh_dst))
+            patch_env_object_to_custom_msh(
+                paths["env"],
+                os.path.basename(msh_dst),
+                deformable=deformable_object,
+            )
         print(f"[OK] Wrote standalone env: {paths['env']}")
     else:
         print(f"[SKIP] Using cached env: {paths['env']}")
@@ -857,6 +966,11 @@ def main():
     # Task selection
     p.add_argument("--task", default="block",
                    help="Built-in task name (block/egg/pen) OR path to a custom .msh file (uses block template and patches object body).")
+    p.add_argument(
+        "--deformable",
+        action="store_true",
+        help="When --task is a custom .msh, patch object body as deformable (stable_row1 params).",
+    )
 
     # Legacy/in-place mode
     p.add_argument("--main",  help="Path to main task XML to update includes, e.g., assets/manipulate_block_touch_sensors.xml")
@@ -883,6 +997,8 @@ def main():
 
     args = p.parse_args()
     task_cfg = parse_task_arg(args.task)
+    if args.deformable and task_cfg["custom_msh"] is None:
+        sys.exit("ERROR: --deformable requires --task to be a path to a .msh file.")
 
     # Decide mode
     if args.standalone:
@@ -894,6 +1010,7 @@ def main():
             base_xml=args.base, template_xml=template_xml,
             out_root=args.out_root, force=args.force,
             custom_msh=task_cfg["custom_msh"],
+            deformable_object=args.deformable,
         )
         # Emit a small machine-friendly summary for BO loops
         print(json.dumps(paths, indent=2))
