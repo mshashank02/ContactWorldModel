@@ -66,6 +66,8 @@ def parse_args():
         help="env id")
     parser.add_argument("--xml-path", type=str, required=True,
                         help="Path to generated MuJoCo XML")
+    parser.add_argument("--artifact-root", type=str, default=".",
+        help="Root directory for models, videos, tensorboard logs, and wandb artifacts.")
     # Env behavior knobs (forwarded to MujocoManipulateTouchSensorsEnv)
     parser.add_argument("--target-position", type=str, default="random",
         choices=["random", "ignore"], help="goal position usage")
@@ -108,16 +110,22 @@ def parse_args():
         help="wandb project name")
     parser.add_argument("--wandb-name", type=str, default=None,
         help="wandb run name")
+    parser.add_argument("--disable-eval-video", action="store_true",
+        help="Disable expensive evaluation video generation during training.")
     
     #GP-BO configs
     parser.add_argument("--metrics-json", type=str, default=None)
     parser.add_argument("--task-name", type=str, default=None)
+    parser.add_argument("--object-id", type=str, default=None)
+    parser.add_argument("--candidate-id", type=str, default=None)
+    parser.add_argument("--physics-mode", type=str, default=None, choices=["rigid", "deformable"])
     args = parser.parse_args()
 
     # Normalize to absolute path and sanity-check
     args.xml_path = os.path.abspath(args.xml_path)
     if not os.path.isfile(args.xml_path):
         raise FileNotFoundError(f"XML not found at {args.xml_path}")
+    args.artifact_root = os.path.abspath(args.artifact_root)
     
     # Auto-generate wandb name if not provided
     if args.wandb_name is None:
@@ -260,8 +268,14 @@ if __name__ == "__main__":
     print(f"Total timesteps: {args.n_timesteps}")
     
     # Ensure directories exist
-    os.makedirs(f"videos/{args.env_id}_{args.seed}", exist_ok=True)
-    os.makedirs(f"models/{args.env_id}", exist_ok=True)
+    video_root = os.path.join(args.artifact_root, "videos", f"{args.env_id}_{args.seed}")
+    model_root = os.path.join(args.artifact_root, "models", args.env_id)
+    run_root = os.path.join(args.artifact_root, "runs", f"{args.env_id}_{args.num_envs}env_{args.seed}")
+    wandb_root = os.path.join(args.artifact_root, "wandb")
+    os.makedirs(video_root, exist_ok=True)
+    os.makedirs(model_root, exist_ok=True)
+    os.makedirs(run_root, exist_ok=True)
+    os.makedirs(wandb_root, exist_ok=True)
     
     # Build hyperparameters dict
     hyperparams = {
@@ -302,7 +316,8 @@ if __name__ == "__main__":
         sync_tensorboard=True,
         monitor_gym=True,
         save_code=True,
-        name=args.wandb_name
+        name=args.wandb_name,
+        dir=wandb_root,
     )
     
     # Create parallel environments
@@ -348,7 +363,7 @@ if __name__ == "__main__":
         verbose=args.verbose,
         seed=args.seed, 
         device='cuda', 
-        tensorboard_log=f"runs/{args.env_id}_{args.num_envs}env_{args.seed}", 
+        tensorboard_log=run_root,
         **hyperparams
     )
 
@@ -356,7 +371,9 @@ if __name__ == "__main__":
         def __init__(self, vec_env, eval_env, model, save_freq, eval_freq, eval_episodes, 
                  save_path, env_id, seed, normalize_kwargs, xml_path,
                  target_position, target_rotation, ignore_z_rot,
-                 metrics_path=None, total_timesteps=None, task_label=None, **kwargs):
+                 metrics_path=None, total_timesteps=None, task_label=None,
+                 object_id=None, candidate_id=None, physics_mode=None,
+                 video_root=None, disable_eval_video=False, **kwargs):
             super().__init__(**kwargs)
             self.vec_env = vec_env
             self.eval_env = eval_env
@@ -378,6 +395,11 @@ if __name__ == "__main__":
             self.metrics_path = metrics_path
             self.total_timesteps = int(total_timesteps) if total_timesteps is not None else None
             self.task_label = (task_label or env_id)
+            self.object_id = object_id
+            self.candidate_id = candidate_id
+            self.physics_mode = physics_mode
+            self.video_root = video_root
+            self.disable_eval_video = disable_eval_video
             self.checkpoint_steps = []
             self.success_curve = []
             self._last_eval_ts = 0
@@ -439,116 +461,117 @@ if __name__ == "__main__":
                     wandb.save(best_model_path)
                     print(f"New best model with success rate {self.best_success_rate:.2f} saved to {best_model_path}")
                 
-                try:
-                    print(f"Creating evaluation video at step {self.n_calls}...")
-                    
-                    video_path = f"videos/{self.env_id}_{self.seed}/eval_{self.n_calls}"
-                    os.makedirs(video_path, exist_ok=True)
-
-                    # fresh env dedicated to video (has render_mode='rgb_array')
-                    video_eval_env = make_eval_env(self.xml_path, self.seed,
-                                  self.target_position, self.target_rotation, self.ignore_z_rot)
-                    video_eval_env = VecNormalize(video_eval_env, **self.normalize_kwargs)
-                    # copy normalization stats so obs are comparable
-                    video_eval_env.obs_rms = deepcopy(self.eval_env.obs_rms)
-                    video_eval_env.ret_rms = deepcopy(self.eval_env.ret_rms)
-                    video_eval_env.training = False
-                    video_eval_env.norm_reward = False
-
-                    video_env = VecVideoRecorder(
-                        video_eval_env,
-                        video_path,
-                        record_video_trigger=lambda x: x == 0,  # record only first episode
-                        video_length=200,
-                        name_prefix=f"eval-{self.n_calls}"
-                    )
-                    
-                    reset_return = video_env.reset()
-                    if isinstance(reset_return, tuple):
-                        if len(reset_return) >= 1:
-                            obs = reset_return[0]
-                        else:
-                            raise ValueError("Reset returned an empty tuple")
-                    elif isinstance(reset_return, dict):
-                        obs = reset_return
-                    else:
-                        obs = reset_return
-                    
+                if not self.disable_eval_video:
                     try:
-                        video_env.render("rgb_array")
+                        print(f"Creating evaluation video at step {self.n_calls}...")
+                        
+                        video_path = os.path.join(self.video_root, f"eval_{self.n_calls}")
+                        os.makedirs(video_path, exist_ok=True)
+
+                        # fresh env dedicated to video (has render_mode='rgb_array')
+                        video_eval_env = make_eval_env(self.xml_path, self.seed,
+                                      self.target_position, self.target_rotation, self.ignore_z_rot)
+                        video_eval_env = VecNormalize(video_eval_env, **self.normalize_kwargs)
+                        # copy normalization stats so obs are comparable
+                        video_eval_env.obs_rms = deepcopy(self.eval_env.obs_rms)
+                        video_eval_env.ret_rms = deepcopy(self.eval_env.ret_rms)
+                        video_eval_env.training = False
+                        video_eval_env.norm_reward = False
+
+                        video_env = VecVideoRecorder(
+                            video_eval_env,
+                            video_path,
+                            record_video_trigger=lambda x: x == 0,  # record only first episode
+                            video_length=200,
+                            name_prefix=f"eval-{self.n_calls}"
+                        )
+                        
+                        reset_return = video_env.reset()
+                        if isinstance(reset_return, tuple):
+                            if len(reset_return) >= 1:
+                                obs = reset_return[0]
+                            else:
+                                raise ValueError("Reset returned an empty tuple")
+                        elif isinstance(reset_return, dict):
+                            obs = reset_return
+                        else:
+                            obs = reset_return
+                        
+                        try:
+                            video_env.render("rgb_array")
+                        except Exception as e:
+                            print(f"Initial render failed, but continuing: {e}")
+                            
+                        done = False
+                        step_count = 0
+                        max_steps = 200  # Maximum video length
+                        
+                        print("Recording evaluation episode...")
+                        while not done and step_count < max_steps:
+                            action, _ = self.model.predict(obs, deterministic=True)
+                            
+                            try:
+                                video_env.render("rgb_array")
+                            except Exception as e:
+                                pass 
+                            
+                            step_return = video_env.step(action)
+                            
+                            if isinstance(step_return, tuple):
+                                if len(step_return) == 5:  # obs, reward, terminated, truncated, info
+                                    obs, _, terminated, truncated, _ = step_return
+                                    
+                                    if isinstance(terminated, bool):
+                                        done = terminated or truncated
+                                    elif hasattr(terminated, '__getitem__'):
+                                        done = terminated[0] or truncated[0]
+                                    else:
+                                        done = bool(terminated) or bool(truncated)
+                                
+                                elif len(step_return) == 4:  # obs, reward, done, info (old Gym API)
+                                    obs, _, done_var, _ = step_return
+                                    
+                                    if isinstance(done_var, bool):
+                                        done = done_var
+                                    elif hasattr(done_var, '__getitem__'):
+                                        done = done_var[0]
+                                    else:
+                                        done = bool(done_var)
+                            else:
+                                print(f"Warning: Unexpected return format from step(): {type(step_return)}")
+                                done = True
+                            
+                            try:
+                                video_env.render("rgb_array")
+                            except Exception as e:
+                                pass  # VecVideoRecorder might handle this internally
+                                
+                            step_count += 1
+                        
+                        video_env.close()
+                        print(f"Finished recording evaluation video after {step_count} steps")
+                    
+                        video_files = [f for f in os.listdir(video_path) if f.endswith('.mp4')]
+                        if video_files:
+                            eval_video_path = os.path.join(video_path, video_files[0])
+                            print(f"Found video file: {eval_video_path}")
+                            
+                            if os.path.exists(eval_video_path) and os.path.getsize(eval_video_path) > 1000:
+                                print(f"Logging video to wandb: {eval_video_path}")
+                                wandb.log({
+                                    "eval/video": wandb.Video(eval_video_path, fps=30, format="mp4"),
+                                    "eval/video_step": self.n_calls
+                                }, step=self.n_calls)
+                                print("Successfully logged video to wandb")
+                            else:
+                                print(f"Warning: Video file is empty or too small: {eval_video_path}")
+                        else:
+                            print(f"Warning: No video files found in {video_path}")
+                        
                     except Exception as e:
-                        print(f"Initial render failed, but continuing: {e}")
-                        
-                    done = False
-                    step_count = 0
-                    max_steps = 200  # Maximum video length
-                    
-                    print("Recording evaluation episode...")
-                    while not done and step_count < max_steps:
-                        action, _ = self.model.predict(obs, deterministic=True)
-                        
-                        try:
-                            video_env.render("rgb_array")
-                        except Exception as e:
-                            pass 
-                        
-                        step_return = video_env.step(action)
-                        
-                        if isinstance(step_return, tuple):
-                            if len(step_return) == 5:  # obs, reward, terminated, truncated, info
-                                obs, _, terminated, truncated, _ = step_return
-                                
-                                if isinstance(terminated, bool):
-                                    done = terminated or truncated
-                                elif hasattr(terminated, '__getitem__'):
-                                    done = terminated[0] or truncated[0]
-                                else:
-                                    done = bool(terminated) or bool(truncated)
-                            
-                            elif len(step_return) == 4:  # obs, reward, done, info (old Gym API)
-                                obs, _, done_var, _ = step_return
-                                
-                                if isinstance(done_var, bool):
-                                    done = done_var
-                                elif hasattr(done_var, '__getitem__'):
-                                    done = done_var[0]
-                                else:
-                                    done = bool(done_var)
-                        else:
-                            print(f"Warning: Unexpected return format from step(): {type(step_return)}")
-                            done = True
-                        
-                        try:
-                            video_env.render("rgb_array")
-                        except Exception as e:
-                            pass  # VecVideoRecorder might handle this internally
-                            
-                        step_count += 1
-                    
-                    video_env.close()
-                    print(f"Finished recording evaluation video after {step_count} steps")
-                
-                    video_files = [f for f in os.listdir(video_path) if f.endswith('.mp4')]
-                    if video_files:
-                        eval_video_path = os.path.join(video_path, video_files[0])
-                        print(f"Found video file: {eval_video_path}")
-                        
-                        if os.path.exists(eval_video_path) and os.path.getsize(eval_video_path) > 1000:
-                            print(f"Logging video to wandb: {eval_video_path}")
-                            wandb.log({
-                                "eval/video": wandb.Video(eval_video_path, fps=30, format="mp4"),
-                                "eval/video_step": self.n_calls
-                            }, step=self.n_calls)
-                            print("Successfully logged video to wandb")
-                        else:
-                            print(f"Warning: Video file is empty or too small: {eval_video_path}")
-                    else:
-                        print(f"Warning: No video files found in {video_path}")
-                        
-                except Exception as e:
-                    print(f"Error creating evaluation video: {e}")
-                    import traceback
-                    traceback.print_exc()
+                        print(f"Error creating evaluation video: {e}")
+                        import traceback
+                        traceback.print_exc()
                 self._last_eval_ts = step_ts
 
             return True
@@ -574,6 +597,13 @@ if __name__ == "__main__":
                     "success": {task: [float(x) for x in self.success_curve]},
                     "final_success": {task: float(self.success_curve[-1])}
                 }
+                if self.object_id is not None:
+                    data["object_id"] = self.object_id
+                if self.candidate_id is not None:
+                    data["candidate_id"] = self.candidate_id
+                if self.physics_mode is not None:
+                    data["physics_mode"] = self.physics_mode
+                data["seed"] = int(self.seed)
                 os.makedirs(os.path.dirname(self.metrics_path), exist_ok=True)
                 with open(self.metrics_path, "w") as f:
                     json.dump(data, f, indent=2)
@@ -595,7 +625,7 @@ if __name__ == "__main__":
             save_freq=args.save_freq,
             eval_freq=args.eval_freq,
             eval_episodes=args.eval_episodes,
-            save_path=f"models/{args.env_id}",
+            save_path=model_root,
             env_id=args.env_id,
             seed=args.seed,
             normalize_kwargs=normalize_kwargs,
@@ -603,18 +633,23 @@ if __name__ == "__main__":
             metrics_path=args.metrics_json,
             total_timesteps=n_timesteps,
             task_label=(args.task_name or args.env_id),
+            object_id=args.object_id,
+            candidate_id=args.candidate_id,
+            physics_mode=args.physics_mode,
+            video_root=video_root,
+            disable_eval_video=args.disable_eval_video,
 
 
             gradient_save_freq=args.gradient_save_freq,
             model_save_freq=args.model_save_freq,
-            model_save_path=f"models/{args.env_id}",
+            model_save_path=model_root,
             verbose=args.verbose,
         ),
     )
     
     # Save final model and normalization stats
-    final_model_path = f"models/{args.env_id}/{args.env_id}_{args.num_envs}env_{args.seed}_final"
-    final_stats_path = f"models/{args.env_id}/{args.env_id}_{args.num_envs}env_{args.seed}_vecnorm_final.pkl"
+    final_model_path = os.path.join(model_root, f"{args.env_id}_{args.num_envs}env_{args.seed}_final")
+    final_stats_path = os.path.join(model_root, f"{args.env_id}_{args.num_envs}env_{args.seed}_vecnorm_final.pkl")
     
     model.save(final_model_path)
     env.save(final_stats_path)

@@ -859,6 +859,7 @@ def build_candidate_standalone(
     Ntotal, Rppx, Rpt, Ap, Apx, At, Ap1, Ap2,
     base_xml: str, template_xml: str, out_root: str, force=False,
     custom_msh: str | None = None,
+    custom_msh_name: str | None = None,
     deformable_object: bool = False,
 ) -> Dict[str, str]:
     """
@@ -880,7 +881,8 @@ def build_candidate_standalone(
             # The task XML compiler uses meshdir="../stls/hand", so place the custom .msh there.
             custom_mesh_dst_dir = os.path.join(out_root, "stls", "hand")
             os.makedirs(custom_mesh_dst_dir, exist_ok=True)
-            msh_dst = os.path.join(custom_mesh_dst_dir, os.path.basename(custom_msh))
+            msh_basename = custom_msh_name or os.path.basename(custom_msh)
+            msh_dst = os.path.join(custom_mesh_dst_dir, msh_basename)
             if force or (not os.path.exists(msh_dst)):
                 shutil.copy2(custom_msh, msh_dst)
                 print(f"[OK] Copied custom .msh: {msh_dst}")
@@ -895,7 +897,8 @@ def build_candidate_standalone(
         if custom_msh:
             custom_mesh_dst_dir = os.path.join(out_root, "stls", "hand")
             os.makedirs(custom_mesh_dst_dir, exist_ok=True)
-            msh_dst = os.path.join(custom_mesh_dst_dir, os.path.basename(custom_msh))
+            msh_basename = custom_msh_name or os.path.basename(custom_msh)
+            msh_dst = os.path.join(custom_mesh_dst_dir, msh_basename)
             if force or (not os.path.exists(msh_dst)):
                 shutil.copy2(custom_msh, msh_dst)
                 print(f"[OK] Copied custom .msh: {msh_dst}")
@@ -1010,6 +1013,7 @@ def main():
             base_xml=args.base, template_xml=template_xml,
             out_root=args.out_root, force=args.force,
             custom_msh=task_cfg["custom_msh"],
+            custom_msh_name=None,
             deformable_object=args.deformable,
         )
         # Emit a small machine-friendly summary for BO loops

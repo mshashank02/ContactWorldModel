@@ -19,7 +19,8 @@ PYTHON_BIN="${PYTHON_BIN:-python}"
   "moviepy==2.2.1" \
   "imageio" \
   "tensorboard" \
-  "botorch"
+  "botorch" \
+  "pyyaml"
 
 echo "[OK] Installation complete."
 echo "[INFO] Installed compatibility core: mujoco==3.3.1, gymnasium==1.2.0, gymnasium-robotics==1.4.2"
