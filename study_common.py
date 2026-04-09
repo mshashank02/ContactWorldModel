@@ -21,7 +21,7 @@ ALLOWED_N_VALUES = (10, 50, 100, 200, 500, 1000)
 ALLOWED_RATIO_VALUES = tuple(round(x / 10.0, 1) for x in range(1, 10))
 PHYSICS_MODES = ("deformable", "rigid")
 ASPECT_RATIO_VALUES = ("low", "high")
-SIZE_VALUES = ("small", "large")
+SIZE_VALUES = ("small", "medium", "large")
 
 
 @dataclass(frozen=True)
@@ -261,7 +261,9 @@ def load_study_manifest(objects_root: str, expected_base_objects: Optional[int] 
             f"Expected {expected_base_objects} base objects, found {len(combos_by_base)} in {manifest_path}"
         )
 
-    expected_combos = {(aspect_ratio, size) for aspect_ratio in ASPECT_RATIO_VALUES for size in SIZE_VALUES}
+    sizes_present = {row.size for row in rows}
+    expected_sizes = tuple(size for size in SIZE_VALUES if size in sizes_present)
+    expected_combos = {(aspect_ratio, size) for aspect_ratio in ASPECT_RATIO_VALUES for size in expected_sizes}
     for base_object, combos in combos_by_base.items():
         if combos != expected_combos:
             raise ValueError(

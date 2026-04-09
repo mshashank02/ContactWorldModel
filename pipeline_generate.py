@@ -726,7 +726,7 @@ def patch_env_object_to_custom_msh(
                 "dim": "3",
                 "dof": "trilinear",
                 "pos": "0 0 0",
-                "scale": "0.025 0.025 0.025",
+                "scale": flex_scale,
                 "radius": "0.001",
                 "rigid": "false",
                 "rgba": "0.7 0.8 1.0 0.5",
@@ -861,6 +861,7 @@ def build_candidate_standalone(
     custom_msh: str | None = None,
     custom_msh_name: str | None = None,
     deformable_object: bool = False,
+    flex_scale: str = "0.025 0.025 0.025",
 ) -> Dict[str, str]:
     """
     No side effects. Returns dict with paths:
@@ -890,6 +891,7 @@ def build_candidate_standalone(
                 paths["env"],
                 os.path.basename(msh_dst),
                 deformable=deformable_object,
+                flex_scale=flex_scale,
             )
         print(f"[OK] Wrote standalone env: {paths['env']}")
     else:

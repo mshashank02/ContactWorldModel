@@ -21,6 +21,18 @@ def has_opt(opt: str, argv: list[str]) -> bool:
     return any(arg.startswith(opt + "=") for arg in argv)
 
 
+SIZE_SCALE_MULTIPLIERS = {
+    "small": 0.75,
+    "medium": 1.0,
+    "large": 1.25,
+}
+
+
+def scale_triplet(base_value: float, multiplier: float) -> str:
+    scaled = base_value * multiplier
+    return f"{scaled:.6f} {scaled:.6f} {scaled:.6f}"
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument('--base', required=True)
@@ -48,6 +60,8 @@ def main():
                    help="Optional candidate identifier forwarded into metrics metadata.")
     p.add_argument('--physics-mode', choices=["rigid", "deformable"], default=None,
                    help="Optional physics mode metadata. Defaults to deformable when --deformable is set, else rigid.")
+    p.add_argument('--object-size', choices=sorted(SIZE_SCALE_MULTIPLIERS), default=None,
+                   help="Optional object size label used to scale custom .msh objects in generated XMLs.")
     p.add_argument('--deformable', action='store_true',
                    help="Generate a deformable custom object when --task points to a .msh file.")
     p.add_argument('--force', action='store_true')
@@ -59,6 +73,8 @@ def main():
     task_cfg = parse_task_arg(args.task)
     physics_mode = args.physics_mode or ("deformable" if args.deformable else "rigid")
     out_root = os.path.abspath(args.artifact_root or args.out_root)
+    size_multiplier = SIZE_SCALE_MULTIPLIERS.get(args.object_size or "medium", 1.0)
+    flex_scale = scale_triplet(0.025, size_multiplier)
 
     if args.object_id and task_cfg["custom_msh"] is not None:
         task_cfg["task_label"] = f"custom_{sanitize_label(args.object_id)}"
@@ -95,6 +111,7 @@ def main():
         custom_msh=task_cfg["custom_msh"],
         custom_msh_name=custom_msh_name,
         deformable_object=args.deformable,
+        flex_scale=flex_scale,
     )
 
     xml_abs = os.path.abspath(paths["env"])  # <-- make it absolute

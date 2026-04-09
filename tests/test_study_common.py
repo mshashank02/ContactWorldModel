@@ -50,6 +50,37 @@ class StudyCommonTests(unittest.TestCase):
             self.assertEqual(len(objects), 8)
             self.assertEqual(objects[0].aspect_ratio, "high")
 
+    def test_load_study_manifest_accepts_medium_size_when_present_consistently(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            manifest_path = root / "manifest.csv"
+            rows = [
+                ("obj_a_low_small", "obj_a_low_small.msh", "obj_a", "low", "small"),
+                ("obj_a_low_medium", "obj_a_low_medium.msh", "obj_a", "low", "medium"),
+                ("obj_a_low_large", "obj_a_low_large.msh", "obj_a", "low", "large"),
+                ("obj_a_high_small", "obj_a_high_small.msh", "obj_a", "high", "small"),
+                ("obj_a_high_medium", "obj_a_high_medium.msh", "obj_a", "high", "medium"),
+                ("obj_a_high_large", "obj_a_high_large.msh", "obj_a", "high", "large"),
+                ("obj_b_low_small", "obj_b_low_small.msh", "obj_b", "low", "small"),
+                ("obj_b_low_medium", "obj_b_low_medium.msh", "obj_b", "low", "medium"),
+                ("obj_b_low_large", "obj_b_low_large.msh", "obj_b", "low", "large"),
+                ("obj_b_high_small", "obj_b_high_small.msh", "obj_b", "high", "small"),
+                ("obj_b_high_medium", "obj_b_high_medium.msh", "obj_b", "high", "medium"),
+                ("obj_b_high_large", "obj_b_high_large.msh", "obj_b", "high", "large"),
+            ]
+            manifest_path.write_text(
+                "object_id,msh_file,base_object,aspect_ratio,size\n"
+                + "\n".join(",".join(row) for row in rows)
+                + "\n",
+                encoding="utf-8",
+            )
+            for _, mesh_name, *_ in rows:
+                (root / mesh_name).write_text("mesh", encoding="utf-8")
+
+            objects = load_study_manifest(str(root), expected_base_objects=2)
+            self.assertEqual(len(objects), 12)
+            self.assertEqual({obj.size for obj in objects}, {"small", "medium", "large"})
+
     def test_load_cluster_config_computes_repo_path_and_python_bin(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "cluster_hosts.yaml"

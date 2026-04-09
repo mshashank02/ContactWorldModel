@@ -303,6 +303,8 @@ def build_job_command(job: Dict[str, object], repo_root: Path) -> List[str]:
         str(job["object_id"]),
         "--candidate-id",
         str(job["candidate_id"]),
+        "--object-size",
+        str(job["size"]),
         "--physics-mode",
         str(job["physics_mode"]),
         "--run-label",
