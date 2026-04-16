@@ -332,7 +332,6 @@ def build_job_command(job: Dict[str, object], repo_root: Path) -> List[str]:
             str(job["candidate_id"]),
             "--physics-mode",
             str(job["physics_mode"]),
-            "--disable-eval-video",
         ]
     )
     cmd.extend(str(arg) for arg in job.get("trainer_args", []))

@@ -1,0 +1,179 @@
+<mujoco model="Trilinear flex sphere sweep">
+  <compiler meshdir="." autolimits="true"/>
+  <include file="/home/mshashank02/SoftObjectsV2/objects/large_1/tet_coarse/scene.xml"/>
+
+  <option solver="CG" tolerance="1e-6" timestep="1e-3" integrator="implicitfast"/>
+  <size memory="512M"/>
+
+  <visual>
+    <map stiffness="100"/>
+    <rgba bv="0 0 0 0" bvactive="0 0 0 0"/>
+  </visual>
+
+  <worldbody>
+    <geom type="box" pos="1.5 0 0.25" size=".5 3 .25"/>
+    <geom type="box" pos="0 0 0.25" size="3 3 .05" euler="0 15 0"/>
+
+    <flexcomp name="soft_high_high" type="gmsh"
+              file="/home/mshashank02/SoftObjectsV2/objects_sphere/sphere_macro_high_rough_high.obj_.msh"
+              dim="3" dof="trilinear"
+              pos="-1.2 -1.0 1.2" scale="0.1 0.1 0.1" mass="10" radius="0.001">
+      <elasticity young="1e4" poisson="0.40" damping="0.12"/>
+      <contact selfcollide="none" internal="false"/>
+    </flexcomp>
+    <body name="rigid_high_high" pos="-1.2 -0.6 1.2">
+      <freejoint/>
+      <inertial pos="0 0 0" mass="0.5" diaginertia="1e-3 1e-3 1e-3"/>
+      <flexcomp name="rigid_copy_high_high" type="gmsh"
+                file="/home/mshashank02/SoftObjectsV2/objects_sphere/sphere_macro_high_rough_high.obj_.msh"
+                dim="3" dof="trilinear" rigid="true"
+                pos="0 0 0" scale="0.1 0.1 0.1" radius="0.001">
+        <contact selfcollide="none" internal="false"/>
+      </flexcomp>
+    </body>
+
+    <flexcomp name="soft_high_medium" type="gmsh"
+              file="/home/mshashank02/SoftObjectsV2/objects_sphere/sphere_macro_high_rough_medium.obj_.msh"
+              dim="3" dof="trilinear"
+              pos="0.0 -1.0 1.2" scale="0.1 0.1 0.1" mass="10" radius="0.001">
+      <elasticity young="1e4" poisson="0.40" damping="0.12"/>
+      <contact selfcollide="none" internal="false"/>
+    </flexcomp>
+    <body name="rigid_high_medium" pos="0.0 -0.6 1.2">
+      <freejoint/>
+      <inertial pos="0 0 0" mass="0.5" diaginertia="1e-3 1e-3 1e-3"/>
+      <flexcomp name="rigid_copy_high_medium" type="gmsh"
+                file="/home/mshashank02/SoftObjectsV2/objects_sphere/sphere_macro_high_rough_medium.obj_.msh"
+                dim="3" dof="trilinear" rigid="true"
+                pos="0 0 0" scale="0.1 0.1 0.1" radius="0.001">
+        <contact selfcollide="none" internal="false"/>
+      </flexcomp>
+    </body>
+
+    <flexcomp name="soft_high_low" type="gmsh"
+              file="/home/mshashank02/SoftObjectsV2/objects_sphere/sphere_macro_high_rough_low.obj_.msh"
+              dim="3" dof="trilinear"
+              pos="1.2 -1.0 1.2" scale="0.1 0.1 0.1" mass="10" radius="0.001">
+      <elasticity young="1e4" poisson="0.40" damping="0.12"/>
+      <contact selfcollide="none" internal="false"/>
+    </flexcomp>
+    <body name="rigid_high_low" pos="1.2 -0.6 1.2">
+      <freejoint/>
+      <inertial pos="0 0 0" mass="0.5" diaginertia="1e-3 1e-3 1e-3"/>
+      <flexcomp name="rigid_copy_high_low" type="gmsh"
+                file="/home/mshashank02/SoftObjectsV2/objects_sphere/sphere_macro_high_rough_low.obj_.msh"
+                dim="3" dof="trilinear" rigid="true"
+                pos="0 0 0" scale="0.1 0.1 0.1" radius="0.001">
+        <contact selfcollide="none" internal="false"/>
+      </flexcomp>
+    </body>
+
+    <flexcomp name="soft_medium_high" type="gmsh"
+              file="/home/mshashank02/SoftObjectsV2/objects_sphere/sphere_macro_medium_rough_high.obj_.msh"
+              dim="3" dof="trilinear"
+              pos="-1.2 0.2 1.2" scale="0.1 0.1 0.1" mass="10" radius="0.001">
+      <elasticity young="1e4" poisson="0.40" damping="0.12"/>
+      <contact selfcollide="none" internal="false"/>
+    </flexcomp>
+    <body name="rigid_medium_high" pos="-1.2 0.6 1.2">
+      <freejoint/>
+      <inertial pos="0 0 0" mass="0.5" diaginertia="1e-3 1e-3 1e-3"/>
+      <flexcomp name="rigid_copy_medium_high" type="gmsh"
+                file="/home/mshashank02/SoftObjectsV2/objects_sphere/sphere_macro_medium_rough_high.obj_.msh"
+                dim="3" dof="trilinear" rigid="true"
+                pos="0 0 0" scale="0.1 0.1 0.1" radius="0.001">
+        <contact selfcollide="none" internal="false"/>
+      </flexcomp>
+    </body>
+
+    <flexcomp name="soft_medium_medium" type="gmsh"
+              file="/home/mshashank02/SoftObjectsV2/objects_sphere/sphere_macro_medium_rough_medium.obj_.msh"
+              dim="3" dof="trilinear"
+              pos="0.0 0.2 1.2" scale="0.1 0.1 0.1" mass="10" radius="0.001">
+      <elasticity young="1e4" poisson="0.40" damping="0.12"/>
+      <contact selfcollide="none" internal="false"/>
+    </flexcomp>
+    <body name="rigid_medium_medium" pos="0.0 0.6 1.2">
+      <freejoint/>
+      <inertial pos="0 0 0" mass="0.5" diaginertia="1e-3 1e-3 1e-3"/>
+      <flexcomp name="rigid_copy_medium_medium" type="gmsh"
+                file="/home/mshashank02/SoftObjectsV2/objects_sphere/sphere_macro_medium_rough_medium.obj_.msh"
+                dim="3" dof="trilinear" rigid="true"
+                pos="0 0 0" scale="0.1 0.1 0.1" radius="0.001">
+        <contact selfcollide="none" internal="false"/>
+      </flexcomp>
+    </body>
+
+    <flexcomp name="soft_medium_low" type="gmsh"
+              file="/home/mshashank02/SoftObjectsV2/objects_sphere/sphere_macro_medium_rough_low.obj_.msh"
+              dim="3" dof="trilinear"
+              pos="1.2 0.2 1.2" scale="0.1 0.1 0.1" mass="10" radius="0.001">
+      <elasticity young="1e4" poisson="0.40" damping="0.12"/>
+      <contact selfcollide="none" internal="false"/>
+    </flexcomp>
+    <body name="rigid_medium_low" pos="1.2 0.6 1.2">
+      <freejoint/>
+      <inertial pos="0 0 0" mass="0.5" diaginertia="1e-3 1e-3 1e-3"/>
+      <flexcomp name="rigid_copy_medium_low" type="gmsh"
+                file="/home/mshashank02/SoftObjectsV2/objects_sphere/sphere_macro_medium_rough_low.obj_.msh"
+                dim="3" dof="trilinear" rigid="true"
+                pos="0 0 0" scale="0.1 0.1 0.1" radius="0.001">
+        <contact selfcollide="none" internal="false"/>
+      </flexcomp>
+    </body>
+
+    <flexcomp name="soft_low_high" type="gmsh"
+              file="/home/mshashank02/SoftObjectsV2/objects_sphere/sphere_macro_low_rough_high.obj_.msh"
+              dim="3" dof="trilinear"
+              pos="-1.2 1.4 1.2" scale="0.1 0.1 0.1" mass="10" radius="0.001">
+      <elasticity young="1e4" poisson="0.40" damping="0.12"/>
+      <contact selfcollide="none" internal="false"/>
+    </flexcomp>
+    <body name="rigid_low_high" pos="-1.2 1.8 1.2">
+      <freejoint/>
+      <inertial pos="0 0 0" mass="0.5" diaginertia="1e-3 1e-3 1e-3"/>
+      <flexcomp name="rigid_copy_low_high" type="gmsh"
+                file="/home/mshashank02/SoftObjectsV2/objects_sphere/sphere_macro_low_rough_high.obj_.msh"
+                dim="3" dof="trilinear" rigid="true"
+                pos="0 0 0" scale="0.1 0.1 0.1" radius="0.001">
+        <contact selfcollide="none" internal="false"/>
+      </flexcomp>
+    </body>
+
+    <flexcomp name="soft_low_medium" type="gmsh"
+              file="/home/mshashank02/SoftObjectsV2/objects_sphere/sphere_macro_low_rough_medium.obj_.msh"
+              dim="3" dof="trilinear"
+              pos="0.0 1.4 1.2" scale="0.1 0.1 0.1" mass="10" radius="0.001">
+      <elasticity young="1e4" poisson="0.40" damping="0.12"/>
+      <contact selfcollide="none" internal="false"/>
+    </flexcomp>
+    <body name="rigid_low_medium" pos="0.0 1.8 1.2">
+      <freejoint/>
+      <inertial pos="0 0 0" mass="0.5" diaginertia="1e-3 1e-3 1e-3"/>
+      <flexcomp name="rigid_copy_low_medium" type="gmsh"
+                file="/home/mshashank02/SoftObjectsV2/objects_sphere/sphere_macro_low_rough_medium.obj_.msh"
+                dim="3" dof="trilinear" rigid="true"
+                pos="0 0 0" scale="0.1 0.1 0.1" radius="0.001">
+        <contact selfcollide="none" internal="false"/>
+      </flexcomp>
+    </body>
+
+    <flexcomp name="soft_low_low" type="gmsh"
+              file="/home/mshashank02/SoftObjectsV2/objects_sphere/sphere_macro_low_rough_low.obj_.msh"
+              dim="3" dof="trilinear"
+              pos="1.2 1.4 1.2" scale="0.1 0.1 0.1" mass="10" radius="0.001">
+      <elasticity young="1e4" poisson="0.40" damping="0.12"/>
+      <contact selfcollide="none" internal="false"/>
+    </flexcomp>
+    <body name="rigid_low_low" pos="1.2 1.8 1.2">
+      <freejoint/>
+      <inertial pos="0 0 0" mass="0.5" diaginertia="1e-3 1e-3 1e-3"/>
+      <flexcomp name="rigid_copy_low_low" type="gmsh"
+                file="/home/mshashank02/SoftObjectsV2/objects_sphere/sphere_macro_low_rough_low.obj_.msh"
+                dim="3" dof="trilinear" rigid="true"
+                pos="0 0 0" scale="0.1 0.1 0.1" radius="0.001">
+        <contact selfcollide="none" internal="false"/>
+      </flexcomp>
+    </body>
+  </worldbody>
+</mujoco>

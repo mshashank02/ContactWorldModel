@@ -1699,3 +1699,8 @@ WARNING: Too many contacts. Either the arena memory is full, or nconmax is speci
 Fri Mar 20 17:19:07 2026
 WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 1000) Time = 0.1811.
 
+Thu Apr 16 15:54:28 2026
+ERROR: mj_stackAlloc: out of memory, stack overflow at mjv_updateActiveFlex, line 2576
+  max = 425628, available = 5084, requested = 117552
+  nefc = 8631, ncon = 2148
+
