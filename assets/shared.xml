@@ -1,6 +1,6 @@
 <!-- See LICENSE.md for legal notices. LICENSE.md must be kept together with this file. -->
 <mujoco>
-    <size njmax="500" nconmax="100" nuser_jnt="1" nuser_site="1" nuser_tendon="1" nuser_sensor="1" nuser_actuator="16" nstack="600000"></size>
+    <size njmax="500" nconmax="1000" nuser_jnt="1" nuser_site="1" nuser_tendon="1" nuser_sensor="1" nuser_actuator="16" nstack="1200000"></size>
 
     <visual>
         <map fogstart="3" fogend="5" force="0.1"></map>
