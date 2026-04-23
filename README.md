@@ -118,7 +118,7 @@ Flags after `--` are forwarded directly to `ShadowHand_TQC.py` and control RL tr
 | Rigid custom mesh | `flexcomp rigid` | `true` |
 | Deformable custom mesh | `flexcomp rigid` | `false` |
 | Medium rigid base mass | `mass` | `0.5` |
-| Medium deformable base mass | `mass` | `0.07` |
+| Medium deformable base mass | `mass` | `0.5` |
 | Base inertia before scaling | `diaginertia` | `1e-3 1e-3 1e-3` |
 | Base flex scale | `scale` | `0.025 0.025 0.025` |
 | Base flex radius | `radius` | `0.001` |
