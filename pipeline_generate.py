@@ -51,6 +51,65 @@ def _sanitize_task_label(s: str) -> str:
     return s or "custom"
 
 
+SIZE_SCALE_MULTIPLIERS = {
+    "small": 0.75,
+    "medium": 1.0,
+    "large": 1.25,
+}
+
+BASE_RIGID_MASS = 0.5
+BASE_DEFORMABLE_MASS = 0.07
+BASE_RIGID_DIAGINERTIA = (1e-3, 1e-3, 1e-3)
+BASE_DEFORMABLE_DIAGINERTIA = (1e-3, 1e-3, 1e-3)
+
+SIZE_SPAWN_HEIGHTS = {
+    "rigid": {
+        "small": 0.36,
+        "medium": 0.40,
+        "large": 0.46,
+    },
+    "deformable": {
+        "small": 0.18,
+        "medium": 0.20,
+        "large": 0.24,
+    },
+}
+
+
+def _scale_triplet(base_value: float, multiplier: float) -> str:
+    scaled = base_value * multiplier
+    return f"{scaled:.6f} {scaled:.6f} {scaled:.6f}"
+
+
+def _scale_scalar(base_value: float, multiplier: float) -> str:
+    return f"{base_value * multiplier:.6f}"
+
+
+def _scale_mass(base_mass: float, multiplier: float) -> str:
+    return f"{base_mass * (multiplier ** 3):.6f}"
+
+
+def _scale_diaginertia(base_inertia: tuple[float, float, float], multiplier: float) -> str:
+    scaled = [value * (multiplier ** 5) for value in base_inertia]
+    return " ".join(f"{value:.8f}" for value in scaled)
+
+
+def infer_custom_object_size_label(custom_msh: str | None) -> str | None:
+    if not custom_msh:
+        return None
+    mesh_name = os.path.basename(custom_msh).lower()
+    match = re.search(r"(?:^|[_-])size[-_](small|medium|large)(?:[_-]|$)", mesh_name)
+    if match:
+        return match.group(1)
+    return None
+
+
+def infer_custom_object_spawn_position(size_label: str, deformable: bool) -> str:
+    physics_mode = "deformable" if deformable else "rigid"
+    z = SIZE_SPAWN_HEIGHTS[physics_mode][size_label]
+    return f"1 0.87 {z:.6f}"
+
+
 def parse_task_arg(task_arg: str) -> Dict[str, str | None]:
     """Parse --task which may be a built-in task name or a custom .msh path."""
     builtins = {"block", "egg", "pen"}
@@ -709,12 +768,11 @@ def patch_env_object_to_custom_msh(
 
     if deformable:
         # Match stable deformable-object parameters used by the reference stable_row1 XML.
-        object_body.set("pos", "1 0.87 0.2")
         object_body.set("quat", "1 0 0 0")
         ET.SubElement(
             object_body,
             "inertial",
-            {"pos": "0 0 0", "mass": "0.07", "diaginertia": "1e-3 1e-3 1e-3"},
+            {"pos": "0 0 0", "mass": str(object_mass), "diaginertia": object_inertia},
         )
         flex = ET.SubElement(
             object_body,
@@ -727,7 +785,7 @@ def patch_env_object_to_custom_msh(
                 "dof": "trilinear",
                 "pos": "0 0 0",
                 "scale": flex_scale,
-                "radius": "0.001",
+                "radius": flex_radius,
                 "rigid": "false",
                 "rgba": "0.7 0.8 1.0 0.5",
             },
@@ -862,6 +920,10 @@ def build_candidate_standalone(
     custom_msh_name: str | None = None,
     deformable_object: bool = False,
     flex_scale: str = "0.025 0.025 0.025",
+    flex_radius: str = "0.001",
+    object_pos: str = "1 0.87 0.4",
+    object_mass: str | float = "0.5",
+    object_inertia: str = "1e-3 1e-3 1e-3",
 ) -> Dict[str, str]:
     """
     No side effects. Returns dict with paths:
@@ -891,7 +953,11 @@ def build_candidate_standalone(
                 paths["env"],
                 os.path.basename(msh_dst),
                 deformable=deformable_object,
+                object_mass=float(object_mass),
+                object_inertia=object_inertia,
+                object_pos=object_pos,
                 flex_scale=flex_scale,
+                flex_radius=flex_radius,
             )
         print(f"[OK] Wrote standalone env: {paths['env']}")
     else:
@@ -1005,6 +1071,17 @@ def main():
     if args.deformable and task_cfg["custom_msh"] is None:
         sys.exit("ERROR: --deformable requires --task to be a path to a .msh file.")
 
+    size_label = infer_custom_object_size_label(task_cfg["custom_msh"]) or "medium"
+    size_multiplier = SIZE_SCALE_MULTIPLIERS[size_label]
+    flex_scale = _scale_triplet(0.025, size_multiplier)
+    flex_radius = _scale_scalar(0.001, size_multiplier)
+    object_pos = infer_custom_object_spawn_position(size_label, args.deformable)
+    object_mass = _scale_mass(BASE_DEFORMABLE_MASS if args.deformable else BASE_RIGID_MASS, size_multiplier)
+    object_inertia = _scale_diaginertia(
+        BASE_DEFORMABLE_DIAGINERTIA if args.deformable else BASE_RIGID_DIAGINERTIA,
+        size_multiplier,
+    )
+
     # Decide mode
     if args.standalone:
         template_xml = resolve_task_template(task_cfg["template_task"], args.template, args.main)
@@ -1017,6 +1094,11 @@ def main():
             custom_msh=task_cfg["custom_msh"],
             custom_msh_name=None,
             deformable_object=args.deformable,
+            flex_scale=flex_scale,
+            flex_radius=flex_radius,
+            object_pos=object_pos,
+            object_mass=object_mass,
+            object_inertia=object_inertia,
         )
         # Emit a small machine-friendly summary for BO loops
         print(json.dumps(paths, indent=2))

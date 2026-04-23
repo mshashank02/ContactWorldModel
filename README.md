@@ -73,6 +73,141 @@ python generate_and_train.py \
   --num-envs 1 --seed 0 --learning-starts 1000
 ```
 
+## `generate_and_train.py` Flag Reference
+
+Flags before `--` control environment generation and simulation parameters.
+Flags after `--` are forwarded directly to `ShadowHand_TQC.py` and control RL training.
+
+### Generation Flags
+
+| Flag | Meaning | Affects Generated XML? | Effect / Parameter Set |
+|---|---|---:|---|
+| `--base` | Base hand XML used to place touch sites on the Shadow Hand | Yes | Uses `assets/hand_base.xml` as the geometry/source for sensor-site placement |
+| `--task block|egg|pen` | Use built-in task template | Yes | Chooses template env XML: block/egg/pen |
+| `--task /path/to/object.msh` | Use a custom mesh object | Yes | Replaces default task object with custom `.msh` `flexcomp` in generated env |
+| `--deformable` | Treat custom `.msh` as deformable | Yes | Switches object to deformable `flexcomp` and applies the stable deformable simulation settings below |
+| `--Ntotal` | Total number of touch sensors | Yes | Total sensors allocated across palm, phalanges, and tips |
+| `--Rppx` | Palm-to-phalanges ratio control | Yes | Controls allocation of sensors between palm and non-tip phalanges |
+| `--Rpt` | Palm-to-tip ratio control | Yes | Controls allocation of sensors between palm and fingertips |
+| `--Ap` | Palm area weight | Yes | Used in the sensor allocation formula |
+| `--Apx` | Phalanx area weight | Yes | Used in the sensor allocation formula |
+| `--At` | Fingertip area weight | Yes | Used in the sensor allocation formula |
+| `--Ap1` | Palm sub-area 1 weight | Yes | Splits palm sensors between palm body and `lfmetacarpal` |
+| `--Ap2` | Palm sub-area 2 weight | Yes | Splits palm sensors between palm body and `lfmetacarpal` |
+| `--out-root` | Output root for generated candidate artifacts | Indirectly | Determines where generated XML/assets are written |
+| `--artifact-root` | Root for run artifacts | Indirectly | Passed through to training for models/videos/runs/W&B |
+| `--object-id` | Stable identifier for object | No direct physics effect | Used in names, artifact paths, and metrics metadata |
+| `--run-label` | Stable run label | No direct physics effect | Used for `env_id`, W&B naming, and artifact naming |
+| `--candidate-id` | Candidate identifier | No direct physics effect | Used in metrics/logging metadata |
+| `--physics-mode rigid\|deformable` | Metadata tag | No direct XML effect by itself | Forwarded into metrics/logging; actual deformable behavior comes from `--deformable` |
+| `--object-size small\|medium\|large` | Object size label override | Yes | Scales object mesh size, radius, mass, inertia, and spawn height |
+| `--force` | Regenerate outputs even if cached | Indirectly | Rewrites generated candidate env/assets |
+
+### Object Size Mapping
+
+| Size | Mesh Scale | Flex Radius | Deformable Spawn Z | Rigid Spawn Z |
+|---|---|---:|---:|---:|
+| `small` | `0.75x` | `0.00075` | `0.18` | `0.36` |
+| `medium` | `1.0x` | `0.001` | `0.20` | `0.40` |
+| `large` | `1.25x` | `0.00125` | `0.24` | `0.46` |
+
+### Generated Custom Object Parameters
+
+| Case | Parameter | Value |
+|---|---|---|
+| Rigid custom mesh | `flexcomp rigid` | `true` |
+| Deformable custom mesh | `flexcomp rigid` | `false` |
+| Medium rigid base mass | `mass` | `0.5` |
+| Medium deformable base mass | `mass` | `0.07` |
+| Base inertia before scaling | `diaginertia` | `1e-3 1e-3 1e-3` |
+| Base flex scale | `scale` | `0.025 0.025 0.025` |
+| Base flex radius | `radius` | `0.001` |
+| Free joint damping | `object:joint damping` | `0.05` |
+
+### Stable Deformable Simulation Settings
+
+These settings are applied when using a custom `.msh` with `--deformable`. They are the stable deformable settings this repo currently treats as the working reference.
+
+| XML Parameter | Value |
+|---|---|
+| `option timestep` | `0.0001` |
+| `option integrator` | `implicitfast` |
+| `option solver` | `CG` |
+| `option tolerance` | `1e-8` |
+| `option iterations` | `100` |
+| `option apirate` | `200` |
+| `option/flag warmstart` | `enable` |
+| `floor0 condim` | `1` |
+| `elasticity young` | `1000000.0` |
+| `elasticity poisson` | `0.45` |
+| `elasticity damping` | `0.001` |
+| `contact selfcollide` | `none` |
+| `contact internal` | `false` |
+| `contact friction` | `1 0.005 0.0001` |
+
+### Shared Env Defaults Copied Into Standalone Candidates
+
+These are copied from `assets/shared.xml` into standalone generated candidates.
+
+| Parameter | Value |
+|---|---|
+| `nconmax` | `1000` |
+| `nstack` | `1200000` |
+| default geom friction | `1 0.005 0.001` |
+| default geom `condim` | `3` |
+| default geom `margin` | `0.0005` |
+| default joint damping | `0.1` |
+| default joint armature | `0.001` |
+
+### Training Flags Forwarded After `--`
+
+These flags are parsed by `ShadowHand_TQC.py`, not by the generator.
+
+| Training Flag | Meaning | Effect |
+|---|---|---|
+| `--num-envs` | Number of parallel envs | Creates that many `SubprocVecEnv` workers |
+| `--seed` | Random seed | Used for env reset seeds and model seed |
+| `--learning-starts` | Warmup before learning | TQC learning start step |
+| `--n-timesteps` | Total training steps | Total training horizon |
+| `--buffer-size` | Replay buffer size | HER replay buffer capacity |
+| `--batch-size` | Batch size | Gradient batch size |
+| `--gamma` | Discount factor | RL discount |
+| `--learning-rate` | Optimizer learning rate | TQC learning rate |
+| `--tau` | Target update smoothing | TQC soft target update |
+| `--ent-coef` | Entropy coefficient | Usually `"auto"` by default |
+| `--n-sampled-goal` | HER relabeled goals | HER parameter |
+| `--goal-selection-strategy` | HER strategy | Default is `future` |
+| `--arch` | Policy/critic hidden sizes | Default `[512, 512, 512]` |
+| `--n-critics` | Number of critics | Default `2` |
+| `--eval-freq` | Evaluation interval | Periodic eval during training |
+| `--eval-episodes` | Eval episode count | Success-rate estimate |
+| `--save-freq` | Save interval | Saves model and VecNormalize stats |
+| `--disable-eval-video` | Skip eval video generation | Faster/cheaper evaluation |
+| `--artifact-root` | Artifact output root | Where `models/`, `videos/`, `runs/`, and `wandb/` go |
+| `--metrics-json` | Metrics output path | Used by BO / worker pipeline |
+| `--task-name` | Task identifier | Metrics metadata |
+| `--object-id` | Object identifier | Metrics metadata |
+| `--candidate-id` | Candidate identifier | Metrics metadata |
+| `--physics-mode` | Rigid/deformable metadata | Metrics metadata |
+| `--target-position` | Goal position behavior | `random` or `ignore` |
+| `--ignore-z-rot` | Ignore z-axis rotation error | Used for pen-style tasks |
+
+### Task-Dependent Training Defaults Injected Automatically
+
+`generate_and_train.py` appends these only if you do not pass your own overrides:
+
+| Task Template | Injected `--target-position` | Injected `--ignore-z-rot` |
+|---|---|---|
+| `block` | `random` | No |
+| `egg` | `random` | No |
+| `pen` | `ignore` | Yes |
+
+### Summary
+
+- Flags before `--` mainly control environment generation and simulation parameters.
+- Flags after `--` control RL training behavior.
+- The stable deformable simulation settings are activated specifically by `--deformable` on a custom `.msh`.
+
 ## Common Runtime Note: Contact Limit
 
 If you see:

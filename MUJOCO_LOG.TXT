@@ -1770,3 +1770,21 @@ WARNING: Too many contacts. Either the arena memory is full, or nconmax is speci
 Tue Apr 21 12:42:29 2026
 WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 100) Time = 1.7400.
 
+Tue Apr 21 19:06:50 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 4000) Time = 0.0015.
+
+Tue Apr 21 19:07:02 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 271. The simulation is unstable. Time = 0.0017.
+
+Tue Apr 21 19:07:03 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 4000) Time = 0.0015.
+
+Tue Apr 21 19:08:13 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 4000) Time = 0.0015.
+
+Tue Apr 21 19:08:25 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 271. The simulation is unstable. Time = 0.0017.
+
+Tue Apr 21 19:08:26 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 4000) Time = 0.0015.
+

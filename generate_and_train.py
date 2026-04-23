@@ -27,10 +27,57 @@ SIZE_SCALE_MULTIPLIERS = {
     "large": 1.25,
 }
 
+BASE_RIGID_MASS = 0.5
+BASE_DEFORMABLE_MASS = 0.07
+BASE_RIGID_DIAGINERTIA = (1e-3, 1e-3, 1e-3)
+BASE_DEFORMABLE_DIAGINERTIA = (1e-3, 1e-3, 1e-3)
+
+SIZE_SPAWN_HEIGHTS = {
+    "rigid": {
+        "small": 0.36,
+        "medium": 0.40,
+        "large": 0.46,
+    },
+    "deformable": {
+        "small": 0.18,
+        "medium": 0.20,
+        "large": 0.24,
+    },
+}
+
 
 def scale_triplet(base_value: float, multiplier: float) -> str:
     scaled = base_value * multiplier
     return f"{scaled:.6f} {scaled:.6f} {scaled:.6f}"
+
+
+def scale_scalar(base_value: float, multiplier: float) -> str:
+    return f"{base_value * multiplier:.6f}"
+
+
+def scale_mass(base_mass: float, multiplier: float) -> str:
+    return f"{base_mass * (multiplier ** 3):.6f}"
+
+
+def scale_diaginertia(base_inertia: tuple[float, float, float], multiplier: float) -> str:
+    scaled = [value * (multiplier ** 5) for value in base_inertia]
+    return " ".join(f"{value:.8f}" for value in scaled)
+
+
+def infer_object_size_label(custom_msh: str | None) -> str | None:
+    if not custom_msh:
+        return None
+    mesh_name = os.path.basename(custom_msh).lower()
+    match = re.search(r"(?:^|[_-])size[-_](small|medium|large)(?:[_-]|$)", mesh_name)
+    if match:
+        return match.group(1)
+    return None
+
+
+def infer_object_spawn_position(size_label: str, deformable: bool) -> str:
+    physics_mode = "deformable" if deformable else "rigid"
+    z = SIZE_SPAWN_HEIGHTS[physics_mode][size_label]
+    return f"1 0.87 {z:.6f}"
 
 
 def main():
@@ -73,8 +120,17 @@ def main():
     task_cfg = parse_task_arg(args.task)
     physics_mode = args.physics_mode or ("deformable" if args.deformable else "rigid")
     out_root = os.path.abspath(args.artifact_root or args.out_root)
-    size_multiplier = SIZE_SCALE_MULTIPLIERS.get(args.object_size or "medium", 1.0)
+    inferred_size_label = infer_object_size_label(task_cfg["custom_msh"])
+    size_label = args.object_size or inferred_size_label or "medium"
+    size_multiplier = SIZE_SCALE_MULTIPLIERS[size_label]
     flex_scale = scale_triplet(0.025, size_multiplier)
+    flex_radius = scale_scalar(0.001, size_multiplier)
+    object_pos = infer_object_spawn_position(size_label, args.deformable)
+    object_mass = scale_mass(BASE_DEFORMABLE_MASS if args.deformable else BASE_RIGID_MASS, size_multiplier)
+    object_inertia = scale_diaginertia(
+        BASE_DEFORMABLE_DIAGINERTIA if args.deformable else BASE_RIGID_DIAGINERTIA,
+        size_multiplier,
+    )
 
     if args.object_id and task_cfg["custom_msh"] is not None:
         task_cfg["task_label"] = f"custom_{sanitize_label(args.object_id)}"
@@ -112,6 +168,10 @@ def main():
         custom_msh_name=custom_msh_name,
         deformable_object=args.deformable,
         flex_scale=flex_scale,
+        flex_radius=flex_radius,
+        object_pos=object_pos,
+        object_mass=object_mass,
+        object_inertia=object_inertia,
     )
 
     xml_abs = os.path.abspath(paths["env"])  # <-- make it absolute
