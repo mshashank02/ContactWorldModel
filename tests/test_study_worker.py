@@ -1,6 +1,7 @@
 import unittest
 from pathlib import Path
 
+from study_common import HostConfig
 from study_worker import (
     FreeGpuTracker,
     build_job_command,
@@ -11,6 +12,20 @@ from study_worker import (
 
 
 class StudyWorkerTests(unittest.TestCase):
+    def _host_cfg(self, num_envs_per_job=11):
+        return HostConfig(
+            host="pc1",
+            ssh_target="user@pc1",
+            gpu_count=4,
+            cpu_cores=48,
+            num_envs_per_job=num_envs_per_job,
+            work_root="/tmp/work",
+            python_root="/tmp/work/envs/shadowhand",
+            priority=100,
+            repo_path="/tmp/work/ShadowHand-TQC",
+            python_bin="/tmp/work/envs/shadowhand/bin/python",
+        )
+
     def test_parse_gpu_query_output(self):
         rows = parse_gpu_query_output("0, GPU-aaa, 100, 5\n1, GPU-bbb, 2048, 90\n")
         self.assertEqual(len(rows), 2)
@@ -37,7 +52,7 @@ class StudyWorkerTests(unittest.TestCase):
         self.assertEqual(tracker.update({0}), {0})
         self.assertEqual(tracker.update(set()), set())
 
-    def test_build_job_command_forwards_object_size_label(self):
+    def test_build_job_command_forwards_object_size_label_and_host_num_envs(self):
         job = {
             "artifact_relpath": "generated/run",
             "object_msh_relpath": "objects/example_medium.msh",
@@ -54,9 +69,32 @@ class StudyWorkerTests(unittest.TestCase):
             "trainer_args": [],
         }
 
-        cmd = build_job_command(job, Path("/tmp/repo"))
+        cmd = build_job_command(job, Path("/tmp/repo"), self._host_cfg())
         self.assertIn("--object-size", cmd)
         self.assertIn("medium", cmd)
+        self.assertIn("--num-envs", cmd)
+        self.assertIn("11", cmd)
+
+    def test_build_job_command_respects_explicit_num_envs_override(self):
+        job = {
+            "artifact_relpath": "generated/run",
+            "object_msh_relpath": "objects/example_medium.msh",
+            "base_xml_relpath": "assets/hand_base.xml",
+            "candidate_id": "n0010_a0p1_b0p1",
+            "object_id": "obj_a_low_medium",
+            "size": "medium",
+            "physics_mode": "rigid",
+            "Ntotal": 10,
+            "Rppx": 0.1,
+            "Rpt": 0.1,
+            "seed": 0,
+            "eval_episodes": 2,
+            "trainer_args": ["--num-envs", "3"],
+        }
+
+        cmd = build_job_command(job, Path("/tmp/repo"), self._host_cfg())
+        num_envs_idx = cmd.index("--num-envs")
+        self.assertEqual(cmd[num_envs_idx + 1], "3")
 
 
 if __name__ == "__main__":

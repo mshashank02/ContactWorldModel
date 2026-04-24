@@ -2,6 +2,8 @@ coordinator:
   host: lara94
   ssh_target: shashank@169.237.117.94
   gpu_count: 2
+  cpu_cores: 12
+  num_envs_per_job: 5
   work_root: /home/shashank
   python_root: /home/shashank/miniconda3/envs/ShadowHand
   priority: 100
@@ -12,6 +14,8 @@ hosts:
   - host: lara156
     ssh_target: shashank@169.237.117.156
     gpu_count: 4
+    cpu_cores: 64
+    num_envs_per_job: 15
     work_root: /home/shashank
     python_root: /home/shashank/miniconda3/envs/ShadowHandRL
     priority: 100
@@ -19,6 +23,8 @@ hosts:
   - host: lara114
     ssh_target: shashank@169.237.117.114
     gpu_count: 4
+    cpu_cores: 48
+    num_envs_per_job: 11
     work_root: /home/shashank
     python_root: /home/shashank/miniconda3/envs/ShadowHand
     priority: 90
@@ -26,6 +32,8 @@ hosts:
   - host: lara98
     ssh_target: shashank@169.237.117.98
     gpu_count: 4
+    cpu_cores: 32
+    num_envs_per_job: 7
     work_root: /home/shashank
     python_root: /home/shashank/miniconda3/envs/ShadowHand
     priority: 80
@@ -33,6 +41,8 @@ hosts:
   - host: lara83
     ssh_target: shashank@169.237.117.83
     gpu_count: 4
+    cpu_cores: 64
+    num_envs_per_job: 15
     work_root: /home/shashank
     python_root: /home/shashank/miniconda3/envs/ShadowHand
     priority: 70

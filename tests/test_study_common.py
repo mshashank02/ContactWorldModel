@@ -107,6 +107,8 @@ hosts:
             self.assertEqual(cluster_cfg.coordinator.repo_path, "/tmp/work/ShadowHand-TQC")
             self.assertTrue(cluster_cfg.coordinator.python_bin.endswith("/bin/python"))
             self.assertEqual(cluster_cfg.hosts[0].host, "pc1")
+            self.assertIsNone(cluster_cfg.hosts[0].cpu_cores)
+            self.assertEqual(cluster_cfg.hosts[0].resolved_num_envs_per_job(), None)
 
     def test_coordinator_can_also_be_worker(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -135,6 +137,36 @@ hosts:
             cluster_cfg = load_cluster_config(str(config_path), repo_dirname="ShadowHand-TQC")
             worker_names = [host.host for host in cluster_cfg.worker_hosts()]
             self.assertEqual(worker_names, ["pc2", "pc1"])
+
+    def test_load_cluster_config_reads_num_envs_per_job_metadata(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_path = Path(tmpdir) / "cluster_hosts.yaml"
+            config_path.write_text(
+                """
+coordinator:
+  host: coordinator
+  ssh_target: user@coordinator
+  gpu_count: 2
+  cpu_cores: 12
+  num_envs_per_job: 5
+  work_root: /tmp/work
+  python_root: /tmp/work/envs/shadowhand
+  priority: 100
+hosts:
+  - host: pc1
+    ssh_target: user@pc1
+    gpu_count: 4
+    cpu_cores: 64
+    num_envs_per_job: 15
+    work_root: /tmp/work
+    python_root: /tmp/work/envs/shadowhand
+    priority: 90
+""".strip(),
+                encoding="utf-8",
+            )
+            cluster_cfg = load_cluster_config(str(config_path), repo_dirname="ShadowHand-TQC")
+            self.assertEqual(cluster_cfg.coordinator.resolved_num_envs_per_job(), 5)
+            self.assertEqual(cluster_cfg.hosts[0].resolved_num_envs_per_job(), 15)
 
 
 if __name__ == "__main__":

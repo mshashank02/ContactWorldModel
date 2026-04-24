@@ -208,6 +208,30 @@ These flags are parsed by `ShadowHand_TQC.py`, not by the generator.
 - Flags after `--` control RL training behavior.
 - The stable deformable simulation settings are activated specifically by `--deformable` on a custom `.msh`.
 
+## Cluster Training Sizing
+
+For distributed training with `study_worker.py`, a practical starting point is to size `--num-envs` per training job from both CPU cores and the number of GPUs that may run jobs concurrently on a host.
+
+Rule of thumb used here:
+
+`num_envs_per_job = max(1, floor((cpu_cores - 2) / gpu_count))`
+
+This leaves roughly 2 CPU cores free per workstation and uses the remaining CPU budget across the GPU jobs that may run concurrently on that host.
+
+| Host | IP Address | CPU Cores | GPUs | Recommended `--num-envs` Per Job |
+|---|---|---:|---:|---:|
+| `lara94` | `169.237.117.94` | 12 | 2 | 5 |
+| `lara156` | `169.237.117.156` | 64 | 4 | 15 |
+| `lara114` | `169.237.117.114` | 48 | 4 | 11 |
+| `lara98` | `169.237.117.98` | 32 | 4 | 7 |
+| `lara83` | `169.237.117.83` | 64 | 4 | 15 |
+
+Notes:
+
+- These values assume a machine may run one training process per free GPU at the same time.
+- If a host is only running one job instead of one job per GPU, you can increase `--num-envs` further.
+- This is a more aggressive recommendation than a conservative cluster-sharing setup; if you observe CPU saturation or slowdown, reduce `--num-envs` by a few on that host.
+
 ## Common Runtime Note: Contact Limit
 
 If you see:

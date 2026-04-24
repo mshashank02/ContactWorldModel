@@ -58,6 +58,8 @@ class HostConfig:
     host: str
     ssh_target: str
     gpu_count: int
+    cpu_cores: Optional[int]
+    num_envs_per_job: Optional[int]
     work_root: str
     python_root: str
     priority: int
@@ -74,6 +76,8 @@ class HostConfig:
             host=self.host,
             ssh_target=self.ssh_target,
             gpu_count=self.gpu_count,
+            cpu_cores=self.cpu_cores,
+            num_envs_per_job=self.num_envs_per_job,
             work_root=self.work_root,
             python_root=self.python_root,
             priority=self.priority,
@@ -82,6 +86,13 @@ class HostConfig:
             role="worker",
             run_worker=True,
         )
+
+    def resolved_num_envs_per_job(self) -> Optional[int]:
+        if self.num_envs_per_job is not None:
+            return max(1, int(self.num_envs_per_job))
+        if self.cpu_cores is None or self.gpu_count <= 0:
+            return None
+        return max(1, int((int(self.cpu_cores) - 2) // int(self.gpu_count)))
 
 
 @dataclass(frozen=True)
@@ -443,6 +454,8 @@ def _normalize_host_entry(entry: Dict[str, Any], repo_dirname: str, role: str = 
         host=str(entry["host"]),
         ssh_target=str(entry["ssh_target"]),
         gpu_count=int(entry["gpu_count"]),
+        cpu_cores=int(entry["cpu_cores"]) if entry.get("cpu_cores") is not None else None,
+        num_envs_per_job=int(entry["num_envs_per_job"]) if entry.get("num_envs_per_job") is not None else None,
         work_root=work_root,
         python_root=python_root,
         priority=int(entry["priority"]),

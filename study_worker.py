@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Set
 
 from study_common import (
+    HostConfig,
     build_run_label,
     load_cluster_config,
     load_score_from_artifacts,
@@ -38,6 +39,12 @@ def parse_args() -> argparse.Namespace:
 
 def _run_command(command: Sequence[str], cwd: Optional[str] = None, env: Optional[Dict[str, str]] = None) -> subprocess.CompletedProcess:
     return subprocess.run(command, cwd=cwd, env=env, text=True, capture_output=True, check=False)
+
+
+def has_opt(opt: str, argv: Sequence[str]) -> bool:
+    if opt in argv:
+        return True
+    return any(str(arg).startswith(opt + "=") for arg in argv)
 
 
 def parse_gpu_query_output(raw_output: str) -> List[Dict[str, int | str]]:
@@ -277,7 +284,7 @@ def sync_artifacts_to_coordinator(job: Dict[str, object], artifact_abs: Path, co
         raise RuntimeError(proc.stderr.strip() or proc.stdout.strip())
 
 
-def build_job_command(job: Dict[str, object], repo_root: Path) -> List[str]:
+def build_job_command(job: Dict[str, object], repo_root: Path, host_cfg: HostConfig) -> List[str]:
     artifact_abs = repo_root / str(job["artifact_relpath"])
     object_msh_abs = repo_root / str(job["object_msh_relpath"])
     base_xml_abs = repo_root / str(job["base_xml_relpath"])
@@ -334,11 +341,15 @@ def build_job_command(job: Dict[str, object], repo_root: Path) -> List[str]:
             str(job["physics_mode"]),
         ]
     )
-    cmd.extend(str(arg) for arg in job.get("trainer_args", []))
+    trainer_args = [str(arg) for arg in job.get("trainer_args", [])]
+    resolved_num_envs = host_cfg.resolved_num_envs_per_job()
+    if resolved_num_envs is not None and not has_opt("--num-envs", trainer_args):
+        trainer_args.extend(["--num-envs", str(resolved_num_envs)])
+    cmd.extend(trainer_args)
     return cmd
 
 
-def launch_job(job: Dict[str, object], gpu_id: int, repo_root: Path) -> RunningJob:
+def launch_job(job: Dict[str, object], gpu_id: int, repo_root: Path, host_cfg: HostConfig) -> RunningJob:
     artifact_abs = repo_root / str(job["artifact_relpath"])
     artifact_abs.mkdir(parents=True, exist_ok=True)
     stdout_abs = repo_root / str(job["stdout_relpath"])
@@ -356,7 +367,7 @@ def launch_job(job: Dict[str, object], gpu_id: int, repo_root: Path) -> RunningJ
     stdout_handle = open(stdout_abs, "w", encoding="utf-8")
     stderr_handle = open(stderr_abs, "w", encoding="utf-8")
     process = subprocess.Popen(
-        build_job_command(job, repo_root),
+        build_job_command(job, repo_root, host_cfg),
         cwd=str(repo_root),
         env=env,
         stdout=stdout_handle,
@@ -439,7 +450,7 @@ def main() -> None:
             job = coordinator.claim_job(host_name, worker_id, gpu_id, args.lease_seconds, args.max_attempts)
             if not job:
                 break
-            running_jobs[gpu_id] = launch_job(job, gpu_id, repo_root)
+            running_jobs[gpu_id] = launch_job(job, gpu_id, repo_root, host_cfg)
 
         time.sleep(max(5, int(args.poll_interval_seconds)))
 
