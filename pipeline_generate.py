@@ -58,7 +58,7 @@ SIZE_SCALE_MULTIPLIERS = {
 }
 
 BASE_RIGID_MASS = 0.5
-BASE_DEFORMABLE_MASS = 0.5
+BASE_DEFORMABLE_MASS = 0.07
 BASE_RIGID_DIAGINERTIA = (1e-3, 1e-3, 1e-3)
 BASE_DEFORMABLE_DIAGINERTIA = (1e-3, 1e-3, 1e-3)
 
@@ -715,7 +715,7 @@ def patch_env_object_to_custom_msh(
     msh_file_for_xml: str,
     *,
     deformable: bool = False,
-    object_mass: float = 0.5,
+    object_mass: float = 0.07,
     object_inertia: str = "1e-3 1e-3 1e-3",
     object_pos: str = "1 0.87 0.4",
     flex_scale: str = "0.025 0.025 0.025",
@@ -922,7 +922,7 @@ def build_candidate_standalone(
     flex_scale: str = "0.025 0.025 0.025",
     flex_radius: str = "0.001",
     object_pos: str = "1 0.87 0.4",
-    object_mass: str | float = "0.5",
+    object_mass: str | float = "0.07",
     object_inertia: str = "1e-3 1e-3 1e-3",
 ) -> Dict[str, str]:
     """

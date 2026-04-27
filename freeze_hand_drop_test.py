@@ -8,6 +8,14 @@ import numpy as np
 import mujoco
 
 
+def quat_from_angle_and_axis(angle, axis):
+    axis = np.asarray(axis, dtype=float)
+    axis /= np.linalg.norm(axis)
+    quat = np.concatenate([[np.cos(angle / 2.0)], np.sin(angle / 2.0) * axis])
+    quat /= np.linalg.norm(quat)
+    return quat
+
+
 def joint_qpos_count(jnt_type: int) -> int:
     if jnt_type == mujoco.mjtJoint.mjJNT_FREE:
         return 7
@@ -81,6 +89,17 @@ def set_object_pose(model: mujoco.MjModel, data: mujoco.MjData, pos, quat):
     mujoco.mj_forward(model, data)
 
 
+def get_object_pose(model: mujoco.MjModel, data: mujoco.MjData):
+    jnt_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, "object:joint")
+    if jnt_id < 0:
+        raise ValueError("Could not find joint 'object:joint'")
+    qpos_adr = int(model.jnt_qposadr[jnt_id])
+    dof_adr = int(model.jnt_dofadr[jnt_id])
+    qpos = np.array(data.qpos[qpos_adr:qpos_adr + 7], copy=True)
+    qvel = np.array(data.qvel[dof_adr:dof_adr + 6], copy=True)
+    return qpos, qvel
+
+
 def object_position(model: mujoco.MjModel, data: mujoco.MjData):
     jnt_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, "object:joint")
     qpos_adr = int(model.jnt_qposadr[jnt_id])
@@ -103,6 +122,37 @@ def has_robot_object_contact(model: mujoco.MjModel, data: mujoco.MjData):
     return False, None
 
 
+def set_zero_action_midrange_ctrl(model: mujoco.MjModel, data: mujoco.MjData):
+    if model.nu == 0:
+        return
+    ctrlrange = model.actuator_ctrlrange
+    data.ctrl[:] = (ctrlrange[:, 1] + ctrlrange[:, 0]) / 2.0
+
+
+def randomize_object_like_trainer(model: mujoco.MjModel, data: mujoco.MjData, rng: np.random.Generator):
+    initial_qpos, _ = get_object_pose(model, data)
+    initial_pos = initial_qpos[:3].copy()
+    initial_quat = initial_qpos[3:].copy()
+
+    angle = rng.uniform(-np.pi, np.pi)
+    axis = rng.uniform(-1.0, 1.0, size=3)
+    if np.linalg.norm(axis) < 1e-8:
+        axis = np.array([1.0, 0.0, 0.0], dtype=float)
+    offset_quat = quat_from_angle_and_axis(angle, axis)
+    mujoco.mju_mulQuat(initial_quat, initial_quat, offset_quat)
+
+    initial_pos += rng.normal(size=3, scale=0.005)
+    initial_quat /= np.linalg.norm(initial_quat)
+    set_object_pose(model, data, initial_pos, initial_quat)
+    return initial_pos, initial_quat
+
+
+def trainer_style_settle_hand(model: mujoco.MjModel, data: mujoco.MjData, n_substeps: int, settle_iters: int):
+    for _ in range(settle_iters):
+        set_zero_action_midrange_ctrl(model, data)
+        mujoco.mj_step(model, data, nstep=n_substeps)
+
+
 def parse_args():
     p = argparse.ArgumentParser(description="Freeze ShadowHand joints, drop object, then unfreeze.")
     p.add_argument(
@@ -117,6 +167,24 @@ def parse_args():
     p.add_argument("--print-every", type=int, default=50, help="Print status every N steps")
     p.add_argument("--viewer", action="store_true", help="Open MuJoCo passive viewer")
     p.add_argument("--realtime", action="store_true", help="Sleep to roughly match simulation time (viewer mode)")
+    p.add_argument(
+        "--trainer-reset-style",
+        action="store_true",
+        help="Use training-style reset: randomize object pose and settle the hand with zero-action midrange control.",
+    )
+    p.add_argument("--seed", type=int, default=0, help="RNG seed used by --trainer-reset-style.")
+    p.add_argument(
+        "--trainer-settle-iters",
+        type=int,
+        default=10,
+        help="Number of training-style settling iterations to run when --trainer-reset-style is enabled.",
+    )
+    p.add_argument(
+        "--trainer-n-substeps",
+        type=int,
+        default=20,
+        help="Number of MuJoCo substeps per training-style settling iteration.",
+    )
     return p.parse_args()
 
 
@@ -137,10 +205,6 @@ def main():
         print("No hand joints found (expected names starting with 'robot0:').")
         return 1
 
-    set_object_pose(model, data, args.drop_pos, args.drop_quat)
-    locked_qpos = data.qpos[hand_qpos_idx].copy()
-    hold_ctrl = compute_hold_ctrl(model, data)
-
     total_steps = args.freeze_steps + args.unfreeze_steps
     first_contact_step = None
     release_step = args.freeze_steps
@@ -150,7 +214,22 @@ def main():
     print(f"dt: {model.opt.timestep}")
     print(f"hand joints: {len(hand_joint_names)}")
     print(f"freeze_steps={args.freeze_steps}, unfreeze_steps={args.unfreeze_steps}, total={total_steps}")
-    print(f"drop_pos={args.drop_pos}, drop_quat={args.drop_quat}")
+    if args.trainer_reset_style:
+        print(
+            f"trainer_reset_style=on seed={args.seed} "
+            f"settle_iters={args.trainer_settle_iters} trainer_n_substeps={args.trainer_n_substeps}"
+        )
+        rng = np.random.default_rng(args.seed)
+        init_pos, init_quat = randomize_object_like_trainer(model, data, rng)
+        print(f"trainer_reset_pos={init_pos.tolist()}")
+        print(f"trainer_reset_quat={init_quat.tolist()}")
+        trainer_style_settle_hand(model, data, args.trainer_n_substeps, args.trainer_settle_iters)
+    else:
+        set_object_pose(model, data, args.drop_pos, args.drop_quat)
+        print(f"drop_pos={args.drop_pos}, drop_quat={args.drop_quat}")
+
+    locked_qpos = data.qpos[hand_qpos_idx].copy()
+    hold_ctrl = compute_hold_ctrl(model, data)
 
     viewer_ctx = None
     if args.viewer:

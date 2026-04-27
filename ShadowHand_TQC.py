@@ -75,6 +75,12 @@ def parse_args():
         help="if set, ignore Z axis in rotation error (XY-only rotate)")
     parser.add_argument("--target-rotation", type=str, default="xyz",
         choices=["xyz"], help="rotation axes spec (kept for completeness)")
+    parser.add_argument("--render-human", action="store_true",
+        help="Render training live in a MuJoCo viewer window (recommended with --num-envs 1).")
+    parser.add_argument("--debug-goals-live", action="store_true",
+        help="Print achieved_goal and desired_goal live from the training env.")
+    parser.add_argument("--debug-goals-every", type=int, default=1,
+        help="Print goal debug every N env steps when --debug-goals-live is set.")
     
     # model hyperparameters
     parser.add_argument("--n-timesteps", type=float, default=ENV_HYPERPARAMS["n_timesteps"],
@@ -133,14 +139,27 @@ def parse_args():
     
     return args
 
-def make_env(xml_path, seed, rank, target_position, target_rotation, ignore_z_rot, max_steps=100):
+def make_env(
+    xml_path,
+    seed,
+    rank,
+    target_position,
+    target_rotation,
+    ignore_z_rot,
+    max_steps=100,
+    render_mode=None,
+    debug_goals_live=False,
+    debug_goals_every=1,
+):
     def _init():
         env = DynamicXMLTouchEnv(
             xml_path=xml_path,
             target_position=target_position,
             target_rotation=target_rotation,
             ignore_z_target_rotation=ignore_z_rot,
-            render_mode=None,
+            render_mode=render_mode,
+            debug_goal_print=debug_goals_live,
+            debug_goal_print_every=debug_goals_every,
         )
         env = TimeLimit(env, max_episode_steps=max_steps)
         env.reset(seed=seed + rank)
@@ -266,6 +285,10 @@ if __name__ == "__main__":
     print(f"Using {args.num_envs} parallel environments")
     print(f"Eval frequency: {args.eval_freq} timesteps")
     print(f"Total timesteps: {args.n_timesteps}")
+    if args.debug_goals_live:
+        print(f"Goal debug printing enabled every {max(1, args.debug_goals_every)} step(s)")
+    if args.render_human:
+        print("Live MuJoCo rendering enabled for training env")
     
     # Ensure directories exist
     video_root = os.path.join(args.artifact_root, "videos", f"{args.env_id}_{args.seed}")
@@ -322,14 +345,25 @@ if __name__ == "__main__":
     
     # Create parallel environments
     xml_path = args.xml_path  # passed from generate_and_train
-    env = SubprocVecEnv([
+    train_render_mode = "human" if args.render_human else None
+    env_fns = [
         make_env(
-                 args.xml_path, args.seed, i,
-                 args.target_position, args.target_rotation, args.ignore_z_rot
-                 )
-        for i in range(args.num_envs)],
-        start_method="spawn"
+            args.xml_path,
+            args.seed,
+            i,
+            args.target_position,
+            args.target_rotation,
+            args.ignore_z_rot,
+            render_mode=train_render_mode,
+            debug_goals_live=args.debug_goals_live,
+            debug_goals_every=args.debug_goals_every,
         )
+        for i in range(args.num_envs)
+    ]
+    if args.num_envs == 1:
+        env = DummyVecEnv(env_fns)
+    else:
+        env = SubprocVecEnv(env_fns, start_method="spawn")
 
     normalize_kwargs = {"gamma": hyperparams["gamma"]}
     env = VecNormalize(env, **normalize_kwargs)
