@@ -363,6 +363,19 @@ def launch_job(job: Dict[str, object], gpu_id: int, repo_root: Path, host_cfg: H
     env.setdefault("PYOPENGL_PLATFORM", "egl")
     env.setdefault("SDL_VIDEODRIVER", "dummy")
     env.setdefault("WANDB_CONSOLE", "off")
+    # Prevent NumPy/BLAS/OpenMP from oversubscribing CPU cores on multi-job hosts.
+    env.setdefault("OMP_NUM_THREADS", "1")
+    env.setdefault("MKL_NUM_THREADS", "1")
+    env.setdefault("OPENBLAS_NUM_THREADS", "1")
+    env.setdefault("NUMEXPR_NUM_THREADS", "1")
+
+    resolved_num_envs = host_cfg.resolved_num_envs_per_job()
+    resolved_cpu_threads = host_cfg.resolved_cpu_threads_per_job()
+    print(
+        f"[worker] launching job_id={job['job_id']} host={host_cfg.host} gpu={gpu_id} "
+        f"num_envs={resolved_num_envs if resolved_num_envs is not None else 'user-specified'} "
+        f"cpu_threads_per_job={resolved_cpu_threads if resolved_cpu_threads is not None else 'unknown'}"
+    )
 
     stdout_handle = open(stdout_abs, "w", encoding="utf-8")
     stderr_handle = open(stderr_abs, "w", encoding="utf-8")

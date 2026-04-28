@@ -94,6 +94,11 @@ class HostConfig:
             return None
         return max(1, int((int(self.cpu_cores) - 2) // int(self.gpu_count)))
 
+    def resolved_cpu_threads_per_job(self) -> Optional[int]:
+        if self.cpu_cores is None or self.gpu_count <= 0:
+            return None
+        return max(1, int((int(self.cpu_cores) - 2) // int(self.gpu_count)))
+
 
 @dataclass(frozen=True)
 class ClusterConfig:

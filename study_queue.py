@@ -632,6 +632,15 @@ def parse_args() -> argparse.Namespace:
     requeue.add_argument("--heartbeat-timeout-seconds", type=int, default=600)
 
     sub.add_parser("summary")
+
+    candidates = sub.add_parser("list-candidates")
+    candidates.add_argument("--statuses", nargs="*", default=None,
+                            help="Optional candidate statuses to include, e.g. new queued running completed failed.")
+
+    jobs = sub.add_parser("list-jobs")
+    jobs.add_argument("--candidate-id", default=None)
+    jobs.add_argument("--statuses", nargs="*", default=None,
+                      help="Optional job statuses to include, e.g. pending running succeeded failed.")
     return parser.parse_args()
 
 
@@ -671,6 +680,42 @@ def main() -> None:
             print(json.dumps({"requeued_job_ids": queue.requeue_stale_jobs(args.heartbeat_timeout_seconds)}))
         elif args.command == "summary":
             print(json.dumps(queue.summary(), indent=2))
+        elif args.command == "list-candidates":
+            rows = queue.list_candidates(statuses=args.statuses)
+            payload = [
+                {
+                    "candidate_id": row["candidate_id"],
+                    "N": int(row["N"]),
+                    "alpha": float(row["alpha"]),
+                    "beta": float(row["beta"]),
+                    "status": row["status"],
+                    "source": row["source"],
+                    "selection_order": row["selection_order"],
+                    "score": row["score"],
+                }
+                for row in rows
+            ]
+            print(json.dumps(payload, indent=2))
+        elif args.command == "list-jobs":
+            query = (
+                "SELECT id, candidate_id, object_id, physics_mode, base_object, aspect_ratio, size, seed, "
+                "priority, status, host, worker_id, gpu_id, attempt_count, artifact_relpath "
+                "FROM jobs"
+            )
+            clauses = []
+            params: List[Any] = []
+            if args.candidate_id:
+                clauses.append("candidate_id = ?")
+                params.append(args.candidate_id)
+            if args.statuses:
+                placeholders = ",".join("?" for _ in args.statuses)
+                clauses.append(f"status IN ({placeholders})")
+                params.extend(args.statuses)
+            if clauses:
+                query += " WHERE " + " AND ".join(clauses)
+            query += " ORDER BY candidate_id, priority, object_id, physics_mode, seed"
+            rows = queue.conn.execute(query, params).fetchall()
+            print(json.dumps([dict(row) for row in rows], indent=2))
         else:  # pragma: no cover
             raise ValueError(f"Unsupported command {args.command}")
     finally:

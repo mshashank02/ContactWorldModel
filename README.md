@@ -218,6 +218,10 @@ Rule of thumb used here:
 
 This leaves roughly 2 CPU cores free per workstation and uses the remaining CPU budget across the GPU jobs that may run concurrently on that host.
 
+## Distributed Study Workflow
+
+For a step-by-step distributed training runbook, including how to preview the initial Sobol candidates before any jobs are dispatched, see [DISTRIBUTED_TRAINING.md](/home/mshashank02/ShadowHand-TQC/DISTRIBUTED_TRAINING.md).
+
 | Host | IP Address | CPU Cores | GPUs | Recommended `--num-envs` Per Job |
 |---|---|---:|---:|---:|
 | `lara94` | `169.237.117.94` | 12 | 2 | 5 |

@@ -45,6 +45,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--force", action="store_true", help="Forward --force into generate_and_train.py jobs.")
     parser.add_argument("--once", action="store_true", help="Run one coordinator iteration and exit.")
     parser.add_argument("--report-only", action="store_true", help="Export reports from current DB state and exit.")
+    parser.add_argument(
+        "--preview-initial-only",
+        action="store_true",
+        help="Initialize the study, print the initial Sobol candidates, export reports, and exit without enqueuing jobs.",
+    )
     parser.add_argument("--trainer-args", nargs=argparse.REMAINDER, default=[])
     return parser.parse_args()
 
@@ -200,10 +205,13 @@ def choose_next_candidate(queue: StudyQueue, spec: Dict[str, Any]) -> Tuple[Opti
 
 def export_reports(queue: StudyQueue, study_root: Path) -> None:
     study_root.mkdir(parents=True, exist_ok=True)
+    spec = queue.get_metadata("study_spec", {})
     candidate_rows = queue.list_candidates()
     candidate_history_path = study_root / "candidate_history.json"
     leaderboard_path = study_root / "leaderboard.csv"
     per_condition_path = study_root / "per_condition_scores.csv"
+    study_spec_path = study_root / "study_spec.json"
+    initial_candidates_path = study_root / "initial_candidates.json"
 
     history = []
     for row in candidate_rows:
@@ -223,6 +231,28 @@ def export_reports(queue: StudyQueue, study_root: Path) -> None:
         )
     with candidate_history_path.open("w", encoding="utf-8") as handle:
         json.dump(history, handle, indent=2)
+
+    with study_spec_path.open("w", encoding="utf-8") as handle:
+        json.dump(spec, handle, indent=2)
+
+    initial_candidate_rows = []
+    for candidate_id in spec.get("initial_candidate_ids", []):
+        row = queue.conn.execute("SELECT * FROM candidates WHERE candidate_id = ?", (candidate_id,)).fetchone()
+        if row is None:
+            continue
+        initial_candidate_rows.append(
+            {
+                "candidate_id": row["candidate_id"],
+                "N": int(row["N"]),
+                "alpha": float(row["alpha"]),
+                "beta": float(row["beta"]),
+                "status": row["status"],
+                "source": row["source"],
+                "selection_order": row["selection_order"],
+            }
+        )
+    with initial_candidates_path.open("w", encoding="utf-8") as handle:
+        json.dump(initial_candidate_rows, handle, indent=2)
 
     completed = [row for row in candidate_rows if row["status"] == "completed"]
     completed.sort(key=lambda row: float(row["score"]), reverse=True)
@@ -327,6 +357,34 @@ def main() -> None:
     queue = StudyQueue(db_path)
     try:
         spec = initialize_study(queue, args, cluster_cfg, study_objects, study_root, repo_root)
+        if args.preview_initial_only:
+            export_reports(queue, study_root)
+            preview = []
+            for candidate_id in spec.get("initial_candidate_ids", []):
+                row = queue.conn.execute("SELECT * FROM candidates WHERE candidate_id = ?", (candidate_id,)).fetchone()
+                if row is None:
+                    continue
+                preview.append(
+                    {
+                        "candidate_id": row["candidate_id"],
+                        "N": int(row["N"]),
+                        "alpha": float(row["alpha"]),
+                        "beta": float(row["beta"]),
+                        "status": row["status"],
+                    }
+                )
+            print(
+                json.dumps(
+                    {
+                        "study_name": spec["study_name"],
+                        "study_root": str(study_root),
+                        "db_path": db_path,
+                        "initial_candidates": preview,
+                    },
+                    indent=2,
+                )
+            )
+            return
         if args.report_only:
             export_reports(queue, study_root)
             print(json.dumps(queue.summary(), indent=2))
