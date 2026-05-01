@@ -75,6 +75,12 @@ python optimize_dataset_gpbo.py \
   --preview-initial-only
 ```
 
+If deformable simulation is unstable and you want to start with rigid-only Sobol jobs first, add:
+
+```bash
+  --sobol-physics-modes rigid
+```
+
 What this gives you:
 
 - Prints the chosen initial Sobol candidates to the terminal.
@@ -121,6 +127,20 @@ python optimize_dataset_gpbo.py \
 ```
 
 This will enqueue exactly one candidate if none is active.
+
+If you started with rigid-only Sobol jobs and later fix deformable simulation, you can append the missing deformable jobs onto the already-selected candidates without creating a new study:
+
+```bash
+python optimize_dataset_gpbo.py \
+  --study-name sphere_v1_demo \
+  --objects-root study_objects/sphere_study_v1 \
+  --cluster-config cluster_hosts.yaml \
+  --expected-base-objects 4 \
+  --backfill-missing-physics-modes deformable \
+  --once
+```
+
+This only adds missing deformable jobs for candidates that have already been selected and are not currently active.
 
 ## Step 6: Inspect what was queued before any training starts
 

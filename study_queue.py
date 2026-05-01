@@ -227,32 +227,58 @@ class StudyQueue:
         row = self.conn.execute("SELECT 1 FROM jobs WHERE candidate_id = ? LIMIT 1", (candidate_id,)).fetchone()
         return row is not None
 
-    def enqueue_candidate_jobs(self, candidate: Candidate, jobs: Sequence[Dict[str, Any]], source: str) -> None:
+    def existing_candidate_job_keys(self, candidate_id: str) -> set[tuple[str, str, int]]:
+        rows = self.conn.execute(
+            "SELECT object_id, physics_mode, seed FROM jobs WHERE candidate_id = ?",
+            (candidate_id,),
+        ).fetchall()
+        return {
+            (str(row["object_id"]), str(row["physics_mode"]), int(row["seed"]))
+            for row in rows
+        }
+
+    def enqueue_candidate_jobs(self, candidate: Candidate, jobs: Sequence[Dict[str, Any]], source: str) -> int:
         if not jobs:
             raise ValueError("Candidate must enqueue at least one job.")
 
         with self.transaction():
             current = self.conn.execute(
-                "SELECT selection_order FROM candidates WHERE candidate_id = ?", (candidate.candidate_id,)
+                "SELECT selection_order, source FROM candidates WHERE candidate_id = ?", (candidate.candidate_id,)
             ).fetchone()
             if current is None:
                 raise ValueError(f"Unknown candidate {candidate.candidate_id}")
 
-            if self.has_candidate_jobs(candidate.candidate_id):
-                return
+            existing_keys = self.existing_candidate_job_keys(candidate.candidate_id)
+            pending_jobs = [
+                job for job in jobs
+                if (str(job["object_id"]), str(job["physics_mode"]), int(job.get("seed", 0))) not in existing_keys
+            ]
+            if not pending_jobs:
+                return 0
 
             max_order_row = self.conn.execute("SELECT COALESCE(MAX(selection_order), 0) AS value FROM candidates").fetchone()
             next_order = (max_order_row["value"] or 0) + 1
             self.conn.execute(
                 """
                 UPDATE candidates
-                SET source = ?, selection_order = COALESCE(selection_order, ?), status = 'queued', queued_at = ?, last_error = NULL
+                SET source = COALESCE(source, ?),
+                    selection_order = COALESCE(selection_order, ?),
+                    status = 'queued',
+                    queued_at = ?,
+                    completed_at = NULL,
+                    score = NULL,
+                    rigid_mean = NULL,
+                    deformable_mean = NULL,
+                    base_object_means_json = NULL,
+                    aspect_ratio_means_json = NULL,
+                    size_means_json = NULL,
+                    last_error = NULL
                 WHERE candidate_id = ?
                 """,
                 (source, next_order, utcnow(), candidate.candidate_id),
             )
 
-            for job in jobs:
+            for job in pending_jobs:
                 self.conn.execute(
                     """
                     INSERT INTO jobs(
@@ -278,6 +304,7 @@ class StudyQueue:
                         to_json(job["payload"]),
                     ),
                 )
+        return len(pending_jobs)
 
     def worker_heartbeat(self, host: str, worker_id: str, pid: Optional[int], details: Optional[Dict[str, Any]] = None) -> None:
         now = utcnow()

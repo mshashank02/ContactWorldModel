@@ -28,6 +28,27 @@ from study_common import (
 from study_queue import StudyQueue
 
 
+VALID_PHYSICS_MODES = ("deformable", "rigid")
+
+
+def parse_physics_modes(raw_value: str, flag_name: str) -> List[str]:
+    modes: List[str] = []
+    seen = set()
+    for piece in str(raw_value).split(","):
+        mode = piece.strip().lower()
+        if not mode:
+            continue
+        if mode not in VALID_PHYSICS_MODES:
+            raise ValueError(f"{flag_name} must contain only {VALID_PHYSICS_MODES}; got {mode!r}.")
+        if mode in seen:
+            continue
+        seen.add(mode)
+        modes.append(mode)
+    if not modes:
+        raise ValueError(f"{flag_name} must include at least one physics mode.")
+    return modes
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Distributed discrete GPBO coordinator for dataset-scale sensor search.")
     parser.add_argument("--study-name", required=True)
@@ -43,6 +64,21 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--loop-sleep-seconds", type=int, default=60)
     parser.add_argument("--expected-base-objects", type=int, default=6)
     parser.add_argument("--force", action="store_true", help="Forward --force into generate_and_train.py jobs.")
+    parser.add_argument(
+        "--sobol-physics-modes",
+        default="deformable,rigid",
+        help="Comma-separated physics modes to enqueue for the initial Sobol candidates.",
+    )
+    parser.add_argument(
+        "--bo-physics-modes",
+        default="deformable,rigid",
+        help="Comma-separated physics modes to enqueue for BO-selected candidates.",
+    )
+    parser.add_argument(
+        "--backfill-missing-physics-modes",
+        default="",
+        help="Optional comma-separated physics modes to add to already-selected completed/failed candidates.",
+    )
     parser.add_argument("--once", action="store_true", help="Run one coordinator iteration and exit.")
     parser.add_argument("--report-only", action="store_true", help="Export reports from current DB state and exit.")
     parser.add_argument(
@@ -77,6 +113,8 @@ def initialize_study(
     trainer_args = args.trainer_args[1:] if (args.trainer_args and args.trainer_args[0] == "--") else list(args.trainer_args)
     spec = queue.get_metadata("study_spec")
     if spec is None:
+        sobol_physics_modes = parse_physics_modes(args.sobol_physics_modes, "--sobol-physics-modes")
+        bo_physics_modes = parse_physics_modes(args.bo_physics_modes, "--bo-physics-modes")
         initial_candidates = sobol_initial_candidates(args.init_candidates)
         spec = {
             "study_name": args.study_name,
@@ -92,9 +130,21 @@ def initialize_study(
             "bo_candidates": int(args.bo_candidates),
             "budget_total": int(args.init_candidates + args.bo_candidates),
             "expected_base_objects": int(args.expected_base_objects),
+            "sobol_physics_modes": sobol_physics_modes,
+            "bo_physics_modes": bo_physics_modes,
             "initial_candidate_ids": [candidate.candidate_id for candidate in initial_candidates],
         }
         queue.set_metadata("study_spec", spec)
+    else:
+        updated = False
+        if "sobol_physics_modes" not in spec:
+            spec["sobol_physics_modes"] = parse_physics_modes(args.sobol_physics_modes, "--sobol-physics-modes")
+            updated = True
+        if "bo_physics_modes" not in spec:
+            spec["bo_physics_modes"] = parse_physics_modes(args.bo_physics_modes, "--bo-physics-modes")
+            updated = True
+        if updated:
+            queue.set_metadata("study_spec", spec)
     return spec
 
 
@@ -108,11 +158,12 @@ def build_jobs_for_candidate(
     seed: int,
     eval_episodes: int,
     force: bool,
+    physics_modes: Sequence[str],
 ) -> List[Dict[str, Any]]:
     _, _, _, _, Rppx, Rpt = map_alpha_beta_to_ratios(candidate.N, candidate.alpha, candidate.beta)
     jobs: List[Dict[str, Any]] = []
     for obj in study_objects:
-        for physics_mode in ("deformable", "rigid"):
+        for physics_mode in physics_modes:
             artifact_relpath = build_run_artifact_relpath(study_name, candidate.candidate_id, obj.object_id, physics_mode)
             payload = {
                 "study_name": study_name,
@@ -144,11 +195,11 @@ def build_jobs_for_candidate(
                     "base_object": obj.base_object,
                     "aspect_ratio": obj.aspect_ratio,
                     "size": obj.size,
-                    "seed": int(seed),
-                    "priority": 0 if physics_mode == "deformable" else 1,
-                    "artifact_relpath": artifact_relpath,
-                    "metrics_relpath": payload["metrics_relpath"],
-                    "stdout_relpath": payload["stdout_relpath"],
+                "seed": int(seed),
+                "priority": 0 if physics_mode == "deformable" else 1,
+                "artifact_relpath": artifact_relpath,
+                "metrics_relpath": payload["metrics_relpath"],
+                "stdout_relpath": payload["stdout_relpath"],
                     "stderr_relpath": payload["stderr_relpath"],
                     "payload": payload,
                 }
@@ -185,6 +236,37 @@ def choose_bo_candidate(completed_rows, available_rows) -> Candidate:
     return row_to_candidate(available_rows[best_idx])
 
 
+def candidate_has_completed_physics_modes(queue: StudyQueue, candidate_id: str, required_modes: Sequence[str]) -> bool:
+    required = {str(mode).strip().lower() for mode in required_modes}
+    if not required:
+        return True
+    row = queue.conn.execute(
+        "SELECT status FROM candidates WHERE candidate_id = ?",
+        (candidate_id,),
+    ).fetchone()
+    if row is None or row["status"] != "completed":
+        return False
+    mode_rows = queue.conn.execute(
+        """
+        SELECT DISTINCT physics_mode
+        FROM jobs
+        WHERE candidate_id = ? AND status = 'succeeded'
+        """,
+        (candidate_id,),
+    ).fetchall()
+    completed_modes = {str(mode_row["physics_mode"]).strip().lower() for mode_row in mode_rows}
+    return required.issubset(completed_modes)
+
+
+def bo_ready_completed_rows(queue: StudyQueue, spec: Dict[str, Any]) -> List[Any]:
+    required_modes = physics_modes_for_source(spec, "bo")
+    rows = queue.completed_candidates()
+    return [
+        row for row in rows
+        if candidate_has_completed_physics_modes(queue, str(row["candidate_id"]), required_modes)
+    ]
+
+
 def choose_next_candidate(queue: StudyQueue, spec: Dict[str, Any]) -> Tuple[Optional[Candidate], Optional[str]]:
     selected_rows = queue.list_candidates(statuses=["queued", "running", "completed", "failed"])
     selected_ids = {row["candidate_id"] for row in selected_rows}
@@ -196,11 +278,82 @@ def choose_next_candidate(queue: StudyQueue, spec: Dict[str, Any]) -> Tuple[Opti
         if row is not None:
             return row_to_candidate(row), "sobol"
 
-    completed_rows = queue.completed_candidates()
+    required_modes = physics_modes_for_source(spec, "bo")
+    for candidate_id in spec["initial_candidate_ids"]:
+        if not candidate_has_completed_physics_modes(queue, candidate_id, required_modes):
+            return None, None
+
+    completed_rows = bo_ready_completed_rows(queue, spec)
     available_rows = queue.available_candidates()
     if not available_rows:
         return None, None
     return choose_bo_candidate(completed_rows, available_rows), "bo"
+
+
+def physics_modes_for_source(spec: Dict[str, Any], source: str) -> List[str]:
+    key = "sobol_physics_modes" if source == "sobol" else "bo_physics_modes"
+    raw_modes = spec.get(key, list(VALID_PHYSICS_MODES))
+    if isinstance(raw_modes, str):
+        return parse_physics_modes(raw_modes, key)
+    modes: List[str] = []
+    seen = set()
+    for mode in raw_modes:
+        normalized = str(mode).strip().lower()
+        if normalized not in VALID_PHYSICS_MODES or normalized in seen:
+            continue
+        seen.add(normalized)
+        modes.append(normalized)
+    return modes or list(VALID_PHYSICS_MODES)
+
+
+def backfill_missing_candidate_jobs(
+    queue: StudyQueue,
+    spec: Dict[str, Any],
+    study_objects,
+    physics_modes: Sequence[str],
+) -> Dict[str, Any]:
+    requested_modes = parse_physics_modes(",".join(physics_modes), "--backfill-missing-physics-modes")
+    rows = queue.conn.execute(
+        """
+        SELECT * FROM candidates
+        WHERE selection_order IS NOT NULL
+        ORDER BY selection_order, candidate_id
+        """
+    ).fetchall()
+
+    updated_candidates: List[Dict[str, Any]] = []
+    skipped_active: List[str] = []
+    for row in rows:
+        if row["status"] in {"queued", "running"}:
+            skipped_active.append(str(row["candidate_id"]))
+            continue
+        candidate = row_to_candidate(row)
+        jobs = build_jobs_for_candidate(
+            candidate=candidate,
+            study_name=spec["study_name"],
+            study_objects=study_objects,
+            objects_root_relpath=spec["objects_root_relpath"],
+            base_xml_relpath=spec["base_xml_relpath"],
+            trainer_args=spec["trainer_args"],
+            seed=int(spec["seed"]),
+            eval_episodes=int(spec["eval_episodes"]),
+            force=bool(spec["force"]),
+            physics_modes=requested_modes,
+        )
+        inserted = queue.enqueue_candidate_jobs(candidate, jobs, source=str(row["source"] or "backfill"))
+        if inserted:
+            updated_candidates.append(
+                {
+                    "candidate_id": candidate.candidate_id,
+                    "jobs_added": inserted,
+                }
+            )
+
+    return {
+        "requested_physics_modes": requested_modes,
+        "updated_candidates": updated_candidates,
+        "skipped_active_candidates": skipped_active,
+    }
 
 
 def export_reports(queue: StudyQueue, study_root: Path) -> None:
@@ -313,16 +466,25 @@ def coordinator_iteration(
     requeued = queue.requeue_stale_jobs()
     active = queue.active_candidates()
     completed = queue.completed_candidates()
+    bo_ready_completed = bo_ready_completed_rows(queue, spec)
+    blocking_initial_candidates = [
+        candidate_id
+        for candidate_id in spec["initial_candidate_ids"]
+        if not candidate_has_completed_physics_modes(queue, candidate_id, physics_modes_for_source(spec, "bo"))
+    ]
     status = {
         "requeued_jobs": requeued,
         "active_candidates": [row["candidate_id"] for row in active],
         "completed_candidates": len(completed),
+        "bo_ready_completed_candidates": len(bo_ready_completed),
+        "blocking_initial_candidates": blocking_initial_candidates,
         "budget_total": int(spec["budget_total"]),
     }
 
     if not active and len(completed) < int(spec["budget_total"]):
         next_candidate, source = choose_next_candidate(queue, spec)
         if next_candidate is not None and source is not None:
+            physics_modes = physics_modes_for_source(spec, source)
             jobs = build_jobs_for_candidate(
                 candidate=next_candidate,
                 study_name=spec["study_name"],
@@ -333,10 +495,13 @@ def coordinator_iteration(
                 seed=int(spec["seed"]),
                 eval_episodes=int(spec["eval_episodes"]),
                 force=bool(spec["force"]),
+                physics_modes=physics_modes,
             )
-            queue.enqueue_candidate_jobs(next_candidate, jobs, source=source)
+            inserted = queue.enqueue_candidate_jobs(next_candidate, jobs, source=source)
             status["enqueued_candidate"] = next_candidate.candidate_id
             status["enqueued_source"] = source
+            status["enqueued_physics_modes"] = physics_modes
+            status["enqueued_job_count"] = inserted
         else:
             status["enqueued_candidate"] = None
 
@@ -357,6 +522,17 @@ def main() -> None:
     queue = StudyQueue(db_path)
     try:
         spec = initialize_study(queue, args, cluster_cfg, study_objects, study_root, repo_root)
+        if args.backfill_missing_physics_modes.strip():
+            backfill = backfill_missing_candidate_jobs(
+                queue,
+                spec,
+                study_objects,
+                parse_physics_modes(args.backfill_missing_physics_modes, "--backfill-missing-physics-modes"),
+            )
+            export_reports(queue, study_root)
+            if args.once or args.report_only:
+                print(json.dumps({"backfill": backfill, "summary": queue.summary()}, indent=2))
+                return
         if args.preview_initial_only:
             export_reports(queue, study_root)
             preview = []

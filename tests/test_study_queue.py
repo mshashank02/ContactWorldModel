@@ -106,6 +106,46 @@ class StudyQueueTests(unittest.TestCase):
         row = self.queue.conn.execute("SELECT status FROM jobs WHERE id = ?", (int(first_job["job_id"]),)).fetchone()
         self.assertEqual(row["status"], "pending")
 
+    def test_completed_candidate_can_backfill_missing_jobs(self):
+        rigid_job = [job for job in self._jobs() if job["physics_mode"] == "rigid"]
+        deformable_job = [job for job in self._jobs() if job["physics_mode"] == "deformable"]
+
+        inserted = self.queue.enqueue_candidate_jobs(self.candidate, rigid_job, source="sobol")
+        self.assertEqual(inserted, 1)
+        self.queue.worker_heartbeat("pc1", "worker-1", 12345, details={})
+
+        claimed = self.queue.claim_job("pc1", "worker-1", 0)
+        self.assertIsNotNone(claimed)
+        self.queue.finish_job(int(claimed["job_id"]), 0.4)
+
+        completed = self.queue.completed_candidates()
+        self.assertEqual(len(completed), 1)
+        self.assertAlmostEqual(float(completed[0]["score"]), 0.4, places=6)
+        self.assertAlmostEqual(float(completed[0]["rigid_mean"]), 0.4, places=6)
+        self.assertIsNone(completed[0]["deformable_mean"])
+
+        inserted = self.queue.enqueue_candidate_jobs(self.candidate, deformable_job, source="sobol")
+        self.assertEqual(inserted, 1)
+
+        row = self.queue.conn.execute(
+            "SELECT status, score, rigid_mean, deformable_mean FROM candidates WHERE candidate_id = ?",
+            (self.candidate.candidate_id,),
+        ).fetchone()
+        self.assertEqual(row["status"], "queued")
+        self.assertIsNone(row["score"])
+        self.assertIsNone(row["rigid_mean"])
+        self.assertIsNone(row["deformable_mean"])
+
+        claimed = self.queue.claim_job("pc1", "worker-1", 1)
+        self.assertIsNotNone(claimed)
+        self.queue.finish_job(int(claimed["job_id"]), 0.6)
+
+        completed = self.queue.completed_candidates()
+        self.assertEqual(len(completed), 1)
+        self.assertAlmostEqual(float(completed[0]["score"]), 0.5, places=6)
+        self.assertAlmostEqual(float(completed[0]["rigid_mean"]), 0.4, places=6)
+        self.assertAlmostEqual(float(completed[0]["deformable_mean"]), 0.6, places=6)
+
 
 if __name__ == "__main__":
     unittest.main()
