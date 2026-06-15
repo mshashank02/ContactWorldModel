@@ -107,9 +107,9 @@ Flags after `--` are forwarded directly to `ShadowHand_TQC.py` and control RL tr
 
 | Size | Mesh Scale | Flex Radius | Deformable Spawn Z | Rigid Spawn Z |
 |---|---|---:|---:|---:|
-| `small` | `0.75x` | `0.00075` | `0.18` | `0.36` |
-| `medium` | `1.0x` | `0.001` | `0.20` | `0.40` |
-| `large` | `1.25x` | `0.00125` | `0.24` | `0.46` |
+| `small` | `0.75x` | `0.00075` | `0.15` | `0.36` |
+| `medium` | `1.0x` | `0.001` | `0.17` | `0.40` |
+| `large` | `1.25x` | `0.00125` | `0.20` | `0.46` |
 
 ### Generated Custom Object Parameters
 
@@ -130,7 +130,7 @@ These settings are applied when using a custom `.msh` with `--deformable`. They 
 
 | XML Parameter | Value |
 |---|---|
-| `option timestep` | `0.0001` |
+| `option timestep` | `0.00002` |
 | `option integrator` | `implicitfast` |
 | `option solver` | `CG` |
 | `option tolerance` | `1e-8` |
@@ -138,12 +138,18 @@ These settings are applied when using a custom `.msh` with `--deformable`. They 
 | `option apirate` | `200` |
 | `option/flag warmstart` | `enable` |
 | `floor0 condim` | `1` |
-| `elasticity young` | `1000000.0` |
+| `elasticity young` | `20000.0` |
 | `elasticity poisson` | `0.45` |
-| `elasticity damping` | `0.001` |
+| `elasticity damping` | `0.03` |
 | `contact selfcollide` | `none` |
 | `contact internal` | `false` |
 | `contact friction` | `1 0.005 0.0001` |
+| `contact condim` | `1` |
+| `contact solref` | `0.05 1` |
+| `contact solimp` | `0.7 0.9 0.01` |
+| `object:joint damping` | `1.0` |
+| deformable `shared.xml nconmax` | `8000` |
+| deformable `shared.xml nstack` | `5000000` |
 
 ### Shared Env Defaults Copied Into Standalone Candidates
 
@@ -191,6 +197,7 @@ These flags are parsed by `ShadowHand_TQC.py`, not by the generator.
 | `--physics-mode` | Rigid/deformable metadata | Metrics metadata |
 | `--target-position` | Goal position behavior | `random` or `ignore` |
 | `--ignore-z-rot` | Ignore z-axis rotation error | Used for pen-style tasks |
+| `--action-scale` | Optional debug scale applied before actuator mapping | Default `1.0`; keep full range for normal training |
 
 ### Task-Dependent Training Defaults Injected Automatically
 

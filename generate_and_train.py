@@ -1,6 +1,10 @@
 import argparse, os, re, subprocess, sys
 from pipeline_generate import (
+    DEFAULT_DEFORMABLE_PRESET,
     build_candidate_standalone,
+    deformable_preset_names,
+    deformable_preset_spawn_position,
+    get_deformable_preset,
     resolve_task_template,
     parse_task_arg,
 )
@@ -28,7 +32,7 @@ SIZE_SCALE_MULTIPLIERS = {
 }
 
 BASE_RIGID_MASS = 0.5
-BASE_DEFORMABLE_MASS = 0.07
+BASE_DEFORMABLE_MASS = 0.5
 BASE_RIGID_DIAGINERTIA = (1e-3, 1e-3, 1e-3)
 BASE_DEFORMABLE_DIAGINERTIA = (1e-3, 1e-3, 1e-3)
 
@@ -39,9 +43,9 @@ SIZE_SPAWN_HEIGHTS = {
         "large": 0.46,
     },
     "deformable": {
-        "small": 0.18,
-        "medium": 0.20,
-        "large": 0.24,
+        "small": 0.15,
+        "medium": 0.17,
+        "large": 0.20,
     },
 }
 
@@ -111,6 +115,16 @@ def main():
                    help="Optional object size label used to scale custom .msh objects in generated XMLs.")
     p.add_argument('--deformable', action='store_true',
                    help="Generate a deformable custom object when --task points to a .msh file.")
+    p.add_argument('--deformable-preset', choices=deformable_preset_names(), default=DEFAULT_DEFORMABLE_PRESET,
+                   help="Named rubber-like deformable material/contact/solver preset.")
+    p.add_argument('--skip-deformable-validation', action='store_true',
+                   help="Skip XML/Gym/action-rollout validation before training deformable objects.")
+    p.add_argument('--preflight-passive-steps', type=int, default=2000,
+                   help="MuJoCo passive physics steps for deformable preflight validation.")
+    p.add_argument('--preflight-env-steps', type=int, default=80,
+                   help="Gym environment steps for each zero/random preflight validation rollout.")
+    p.add_argument('--preflight-train-steps', type=int, default=64,
+                   help="Short TQC+HER smoke-training steps to run before the full deformable training job.")
     p.add_argument('--force', action='store_true')
     # everything after “--” is passed directly to ShadowHand_TQC.py
     args, train_args = p.parse_known_args()
@@ -123,10 +137,17 @@ def main():
     inferred_size_label = infer_object_size_label(task_cfg["custom_msh"])
     size_label = args.object_size or inferred_size_label or "medium"
     size_multiplier = SIZE_SCALE_MULTIPLIERS[size_label]
+    deformable_preset = get_deformable_preset(args.deformable_preset) if args.deformable else None
     flex_scale = scale_triplet(0.025, size_multiplier)
-    flex_radius = scale_scalar(0.001, size_multiplier)
-    object_pos = infer_object_spawn_position(size_label, args.deformable)
-    object_mass = scale_mass(BASE_DEFORMABLE_MASS if args.deformable else BASE_RIGID_MASS, size_multiplier)
+    flex_radius_base = float(deformable_preset["flex_radius"]) if deformable_preset else 0.001
+    mass_base = float(deformable_preset["mass"]) if deformable_preset else BASE_RIGID_MASS
+    flex_radius = scale_scalar(flex_radius_base, size_multiplier)
+    object_pos = (
+        deformable_preset_spawn_position(args.deformable_preset, size_label)
+        if args.deformable
+        else infer_object_spawn_position(size_label, False)
+    )
+    object_mass = scale_mass(mass_base, size_multiplier)
     object_inertia = scale_diaginertia(
         BASE_DEFORMABLE_DIAGINERTIA if args.deformable else BASE_RIGID_DIAGINERTIA,
         size_multiplier,
@@ -172,6 +193,7 @@ def main():
         object_pos=object_pos,
         object_mass=object_mass,
         object_inertia=object_inertia,
+        deformable_preset=args.deformable_preset,
     )
 
     xml_abs = os.path.abspath(paths["env"])  # <-- make it absolute
@@ -187,10 +209,49 @@ def main():
         train_args += ["--physics-mode", physics_mode]
     if args.run_label and not has_opt("--wandb-name", train_args):
         train_args += ["--wandb-name", sanitize_label(args.run_label)]
+    if args.deformable and deformable_preset:
+        preset_train_defaults = {
+            "--action-scale": deformable_preset.get("action_scale"),
+            "--action-clip": deformable_preset.get("action_clip"),
+            "--action-smoothing": deformable_preset.get("action_smoothing"),
+            "--reset-settle-steps": deformable_preset.get("reset_settle_steps"),
+        }
+        for opt, value in preset_train_defaults.items():
+            if value is not None and not has_opt(opt, train_args):
+                train_args += [opt, str(value)]
+
+    if args.deformable and not args.skip_deformable_validation:
+        validation_cmd = [
+            sys.executable,
+            "validate_deformable_rollout.py",
+            "--xml-path",
+            xml_abs,
+            "--target-position",
+            desired_target_position,
+            "--target-rotation",
+            "xyz",
+            "--passive-steps",
+            str(args.preflight_passive_steps),
+            "--env-steps",
+            str(args.preflight_env_steps),
+            "--training-steps",
+            str(args.preflight_train_steps),
+            "--action-scale",
+            str(deformable_preset.get("action_scale", 1.0)),
+            "--action-clip",
+            str(deformable_preset.get("action_clip", 1.0)),
+            "--action-smoothing",
+            str(deformable_preset.get("action_smoothing", 0.0)),
+            "--reset-settle-steps",
+            str(deformable_preset.get("reset_settle_steps", 0)),
+        ]
+        if desired_ignore_z:
+            validation_cmd.append("--ignore-z-rot")
+        subprocess.run(validation_cmd, check=True)
 
     #env_id = stable_env_id(paths["env"])           # optional: for naming only
     cmd = [
-        "python", "ShadowHand_TQC.py",
+        sys.executable, "ShadowHand_TQC.py",
         "--env-id", env_id,                        # just for logs/dirs
         "--xml-path", xml_abs,                # REQUIRED for direct construction
         *train_args,

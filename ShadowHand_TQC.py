@@ -6,6 +6,7 @@ import gymnasium as gym
 import gymnasium_robotics
 import os
 import numpy as np
+import torch
 from sb3_contrib import TQC
 from stable_baselines3 import HerReplayBuffer
 from stable_baselines3.common.monitor import Monitor
@@ -50,6 +51,8 @@ def parse_args():
             help="the verbosity of the logs")
     parser.add_argument("--num-envs", type=int, default=6,
         help="number of parallel environments")
+    parser.add_argument("--device", type=str, default="auto", choices=["auto", "cpu", "cuda"],
+        help="Torch device for TQC. 'auto' uses CUDA when available, otherwise CPU.")
     parser.add_argument("--eval-freq", type=int, default=20000,
         help="frequency of evaluation (in timesteps)")
     parser.add_argument("--eval-episodes", type=int, default=50,
@@ -77,10 +80,20 @@ def parse_args():
         choices=["xyz"], help="rotation axes spec (kept for completeness)")
     parser.add_argument("--render-human", action="store_true",
         help="Render training live in a MuJoCo viewer window (recommended with --num-envs 1).")
+    parser.add_argument("--max-episode-steps", type=int, default=100,
+        help="Maximum policy steps per episode before TimeLimit reset.")
     parser.add_argument("--debug-goals-live", action="store_true",
         help="Print achieved_goal and desired_goal live from the training env.")
     parser.add_argument("--debug-goals-every", type=int, default=1,
         help="Print goal debug every N env steps when --debug-goals-live is set.")
+    parser.add_argument("--action-scale", type=float, default=1.0,
+        help="Optional debug scale applied to policy actions before actuator mapping.")
+    parser.add_argument("--action-clip", type=float, default=None,
+        help="Optional symmetric clip applied to policy actions after scaling.")
+    parser.add_argument("--action-smoothing", type=float, default=0.0,
+        help="Exponential action smoothing factor in [0, 0.98]; 0 disables smoothing.")
+    parser.add_argument("--reset-settle-steps", type=int, default=0,
+        help="Zero-action env steps to settle the object immediately after reset.")
     
     # model hyperparameters
     parser.add_argument("--n-timesteps", type=float, default=ENV_HYPERPARAMS["n_timesteps"],
@@ -139,6 +152,15 @@ def parse_args():
     
     return args
 
+
+def resolve_device(requested_device: str) -> str:
+    if requested_device == "auto":
+        return "cuda" if torch.cuda.is_available() else "cpu"
+    if requested_device == "cuda" and not torch.cuda.is_available():
+        print("Warning: --device cuda requested but CUDA is unavailable; falling back to CPU.")
+        return "cpu"
+    return requested_device
+
 def make_env(
     xml_path,
     seed,
@@ -150,6 +172,10 @@ def make_env(
     render_mode=None,
     debug_goals_live=False,
     debug_goals_every=1,
+    action_scale=1.0,
+    action_clip=None,
+    action_smoothing=0.0,
+    reset_settle_steps=0,
 ):
     def _init():
         env = DynamicXMLTouchEnv(
@@ -160,6 +186,10 @@ def make_env(
             render_mode=render_mode,
             debug_goal_print=debug_goals_live,
             debug_goal_print_every=debug_goals_every,
+            action_scale=action_scale,
+            action_clip=action_clip,
+            action_smoothing=action_smoothing,
+            reset_settle_steps=reset_settle_steps,
         )
         env = TimeLimit(env, max_episode_steps=max_steps)
         env.reset(seed=seed + rank)
@@ -168,7 +198,18 @@ def make_env(
         return env
     return _init
 
-def make_eval_env(xml_path, seed, target_position, target_rotation, ignore_z_rot, max_steps=100):
+def make_eval_env(
+    xml_path,
+    seed,
+    target_position,
+    target_rotation,
+    ignore_z_rot,
+    max_steps=100,
+    action_scale=1.0,
+    action_clip=None,
+    action_smoothing=0.0,
+    reset_settle_steps=0,
+):
     def _init():
         env = DynamicXMLTouchEnv(
             xml_path=xml_path,
@@ -176,6 +217,10 @@ def make_eval_env(xml_path, seed, target_position, target_rotation, ignore_z_rot
             target_rotation=target_rotation,
             ignore_z_target_rotation=ignore_z_rot,
             render_mode="rgb_array",
+            action_scale=action_scale,
+            action_clip=action_clip,
+            action_smoothing=action_smoothing,
+            reset_settle_steps=reset_settle_steps,
         )
         env = TimeLimit(env, max_episode_steps=max_steps)
         env.reset(seed=seed)
@@ -285,6 +330,8 @@ if __name__ == "__main__":
     print(f"Using {args.num_envs} parallel environments")
     print(f"Eval frequency: {args.eval_freq} timesteps")
     print(f"Total timesteps: {args.n_timesteps}")
+    device = resolve_device(args.device)
+    print(f"Using torch device: {device}")
     if args.debug_goals_live:
         print(f"Goal debug printing enabled every {max(1, args.debug_goals_every)} step(s)")
     if args.render_human:
@@ -330,6 +377,10 @@ if __name__ == "__main__":
         'eval_freq': args.eval_freq,
         'eval_episodes': args.eval_episodes,
         'save_freq': args.save_freq,
+        'action_scale': args.action_scale,
+        'action_clip': args.action_clip,
+        'action_smoothing': args.action_smoothing,
+        'reset_settle_steps': args.reset_settle_steps,
         **hyperparams
     }
     
@@ -354,9 +405,14 @@ if __name__ == "__main__":
             args.target_position,
             args.target_rotation,
             args.ignore_z_rot,
+            max_steps=args.max_episode_steps,
             render_mode=train_render_mode,
             debug_goals_live=args.debug_goals_live,
             debug_goals_every=args.debug_goals_every,
+            action_scale=args.action_scale,
+            action_clip=args.action_clip,
+            action_smoothing=args.action_smoothing,
+            reset_settle_steps=args.reset_settle_steps,
         )
         for i in range(args.num_envs)
     ]
@@ -377,7 +433,12 @@ if __name__ == "__main__":
 
     # Eval env (also direct)
     eval_env = make_eval_env(args.xml_path, args.seed,
-                             args.target_position, args.target_rotation, args.ignore_z_rot
+                             args.target_position, args.target_rotation, args.ignore_z_rot,
+                             max_steps=args.max_episode_steps,
+                             action_scale=args.action_scale,
+                             action_clip=args.action_clip,
+                             action_smoothing=args.action_smoothing,
+                             reset_settle_steps=args.reset_settle_steps,
                              )
     eval_env = VecNormalize(eval_env, **normalize_kwargs)
     eval_env.training = False
@@ -396,7 +457,7 @@ if __name__ == "__main__":
         replay_buffer_class=HerReplayBuffer, 
         verbose=args.verbose,
         seed=args.seed, 
-        device='cuda', 
+        device=device,
         tensorboard_log=run_root,
         **hyperparams
     )
@@ -407,7 +468,9 @@ if __name__ == "__main__":
                  target_position, target_rotation, ignore_z_rot,
                  metrics_path=None, total_timesteps=None, task_label=None,
                  object_id=None, candidate_id=None, physics_mode=None,
-                 video_root=None, disable_eval_video=False, **kwargs):
+                 video_root=None, disable_eval_video=False, action_scale=1.0,
+                 action_clip=None, action_smoothing=0.0, reset_settle_steps=0,
+                 max_episode_steps=100, **kwargs):
             super().__init__(**kwargs)
             self.vec_env = vec_env
             self.eval_env = eval_env
@@ -434,6 +497,11 @@ if __name__ == "__main__":
             self.physics_mode = physics_mode
             self.video_root = video_root
             self.disable_eval_video = disable_eval_video
+            self.action_scale = action_scale
+            self.action_clip = action_clip
+            self.action_smoothing = action_smoothing
+            self.reset_settle_steps = reset_settle_steps
+            self.max_episode_steps = max_episode_steps
             self.checkpoint_steps = []
             self.success_curve = []
             self._last_eval_ts = 0
@@ -504,7 +572,12 @@ if __name__ == "__main__":
 
                         # fresh env dedicated to video (has render_mode='rgb_array')
                         video_eval_env = make_eval_env(self.xml_path, self.seed,
-                                      self.target_position, self.target_rotation, self.ignore_z_rot)
+                                      self.target_position, self.target_rotation, self.ignore_z_rot,
+                                      max_steps=self.max_episode_steps,
+                                      action_scale=self.action_scale,
+                                      action_clip=self.action_clip,
+                                      action_smoothing=self.action_smoothing,
+                                      reset_settle_steps=self.reset_settle_steps)
                         video_eval_env = VecNormalize(video_eval_env, **self.normalize_kwargs)
                         # copy normalization stats so obs are comparable
                         video_eval_env.obs_rms = deepcopy(self.eval_env.obs_rms)
@@ -672,6 +745,11 @@ if __name__ == "__main__":
             physics_mode=args.physics_mode,
             video_root=video_root,
             disable_eval_video=args.disable_eval_video,
+            action_scale=args.action_scale,
+            action_clip=args.action_clip,
+            action_smoothing=args.action_smoothing,
+            reset_settle_steps=args.reset_settle_steps,
+            max_episode_steps=args.max_episode_steps,
 
 
             gradient_save_freq=args.gradient_save_freq,
@@ -689,7 +767,7 @@ if __name__ == "__main__":
     env.save(final_stats_path)
     
     # Run a final evaluation
-    final_eval_metrics = evaluate_policy(model, eval_env, n_eval_episodes=50)
+    final_eval_metrics = evaluate_policy(model, eval_env, n_eval_episodes=args.eval_episodes)
     wandb.log(final_eval_metrics, step=n_timesteps)
     
     print(f"Training finished!")

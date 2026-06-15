@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 from typing import Dict, List, Tuple
-import os, sys, math, argparse, re, shutil, json
+import os, sys, math, argparse, re, shutil, json, struct
 import xml.etree.ElementTree as ET
 from collections import defaultdict, namedtuple
 
@@ -58,7 +58,7 @@ SIZE_SCALE_MULTIPLIERS = {
 }
 
 BASE_RIGID_MASS = 0.5
-BASE_DEFORMABLE_MASS = 0.07
+BASE_DEFORMABLE_MASS = 0.5
 BASE_RIGID_DIAGINERTIA = (1e-3, 1e-3, 1e-3)
 BASE_DEFORMABLE_DIAGINERTIA = (1e-3, 1e-3, 1e-3)
 
@@ -69,11 +69,178 @@ SIZE_SPAWN_HEIGHTS = {
         "large": 0.46,
     },
     "deformable": {
-        "small": 0.18,
-        "medium": 0.20,
-        "large": 0.24,
+        "small": 0.15,
+        "medium": 0.17,
+        "large": 0.20,
     },
 }
+
+
+DEFORMABLE_PRESETS: Dict[str, Dict[str, object]] = {
+    "debug_soft": {
+        "young": 5.0e4,
+        "poisson": 0.35,
+        "damping": 0.02,
+        "mass": 0.35,
+        "flex_radius": 0.0012,
+        "joint_damping": 0.8,
+        "option": {
+            "timestep": "0.00004",
+            "integrator": "implicitfast",
+            "solver": "CG",
+            "tolerance": "1e-9",
+            "iterations": "150",
+            "impratio": "1",
+            "apirate": "200",
+        },
+        "contact": {
+            "selfcollide": "none",
+            "internal": "false",
+            "condim": "1",
+            "friction": "0.5 0.002 0.0001",
+            "contype": "0",
+            "conaffinity": "1",
+            "solref": "0.09 1",
+            "solimp": "0.55 0.8 0.005",
+            "margin": "0.001",
+        },
+        "safe_spawn_heights": {"small": 0.18, "medium": 0.22, "large": 0.27},
+        "action_scale": 0.55,
+        "action_clip": 0.75,
+        "action_smoothing": 0.65,
+        "reset_settle_steps": 12,
+        "nconmax": 10000,
+        "nstack": 8000000,
+    },
+    "soft_rubber_stable": {
+        "young": 5.0e5,
+        "poisson": 0.38,
+        "damping": 0.02,
+        "mass": 0.50,
+        "flex_radius": 0.0010,
+        "joint_damping": 1.0,
+        "option": {
+            "timestep": "0.00002",
+            "integrator": "implicitfast",
+            "solver": "CG",
+            "tolerance": "1e-10",
+            "iterations": "200",
+            "impratio": "1",
+            "apirate": "200",
+        },
+        "contact": {
+            "selfcollide": "none",
+            "internal": "false",
+            "condim": "1",
+            "friction": "0.6 0.002 0.0001",
+            "contype": "0",
+            "conaffinity": "1",
+            "solref": "0.08 1",
+            "solimp": "0.6 0.82 0.005",
+            "margin": "0.001",
+        },
+        "safe_spawn_heights": {"small": 0.18, "medium": 0.22, "large": 0.27},
+        "action_scale": 0.60,
+        "action_clip": 0.80,
+        "action_smoothing": 0.55,
+        "reset_settle_steps": 10,
+        "nconmax": 10000,
+        "nstack": 8000000,
+    },
+    "medium_rubber": {
+        "young": 1.0e6,
+        "poisson": 0.40,
+        "damping": 0.018,
+        "mass": 0.55,
+        "flex_radius": 0.0010,
+        "joint_damping": 1.0,
+        "option": {
+            "timestep": "0.000015",
+            "integrator": "implicitfast",
+            "solver": "CG",
+            "tolerance": "1e-10",
+            "iterations": "240",
+            "impratio": "1",
+            "apirate": "200",
+        },
+        "contact": {
+            "selfcollide": "none",
+            "internal": "false",
+            "condim": "1",
+            "friction": "0.7 0.002 0.0001",
+            "contype": "0",
+            "conaffinity": "1",
+            "solref": "0.07 1",
+            "solimp": "0.62 0.84 0.005",
+            "margin": "0.001",
+        },
+        "safe_spawn_heights": {"small": 0.19, "medium": 0.23, "large": 0.28},
+        "action_scale": 0.55,
+        "action_clip": 0.75,
+        "action_smoothing": 0.60,
+        "reset_settle_steps": 12,
+        "nconmax": 12000,
+        "nstack": 10000000,
+    },
+    "stiff_rubber": {
+        "young": 5.0e6,
+        "poisson": 0.35,
+        "damping": 0.015,
+        "mass": 0.70,
+        "flex_radius": 0.0009,
+        "joint_damping": 1.0,
+        "option": {
+            "timestep": "0.000005",
+            "integrator": "implicitfast",
+            "solver": "CG",
+            "tolerance": "1e-10",
+            "iterations": "320",
+            "impratio": "1",
+            "apirate": "200",
+        },
+        "contact": {
+            "selfcollide": "none",
+            "internal": "false",
+            "condim": "1",
+            "friction": "0.7 0.0015 0.0001",
+            "contype": "0",
+            "conaffinity": "1",
+            "solref": "0.06 1",
+            "solimp": "0.65 0.85 0.005",
+            "margin": "0.001",
+        },
+        "safe_spawn_heights": {"small": 0.20, "medium": 0.24, "large": 0.30},
+        "action_scale": 0.45,
+        "action_clip": 0.65,
+        "action_smoothing": 0.70,
+        "reset_settle_steps": 16,
+        "nconmax": 14000,
+        "nstack": 12000000,
+    },
+}
+
+DEFAULT_DEFORMABLE_PRESET = "soft_rubber_stable"
+
+
+def deformable_preset_names() -> list[str]:
+    return sorted(DEFORMABLE_PRESETS)
+
+
+def get_deformable_preset(name: str | None) -> Dict[str, object]:
+    preset_name = name or DEFAULT_DEFORMABLE_PRESET
+    try:
+        return DEFORMABLE_PRESETS[preset_name]
+    except KeyError as exc:
+        valid = ", ".join(deformable_preset_names())
+        raise ValueError(f"Unknown deformable preset {preset_name!r}. Valid presets: {valid}") from exc
+
+
+def deformable_preset_spawn_position(name: str | None, size_label: str) -> str:
+    preset = get_deformable_preset(name)
+    heights = preset.get("safe_spawn_heights", {})
+    if not isinstance(heights, dict) or size_label not in heights:
+        return infer_custom_object_spawn_position(size_label, deformable=True)
+    return f"1 0.87 {float(heights[size_label]):.6f}"
 
 
 def _scale_triplet(base_value: float, multiplier: float) -> str:
@@ -143,6 +310,138 @@ def save_text_with_header(path: str, xml: str):
         f.write(xml)
         if not xml.endswith("\n"):
             f.write("\n")
+
+
+def analyze_gmsh_msh(msh_path: str) -> Dict[str, object]:
+    """Best-effort Gmsh v2 diagnostics for scale and element sanity."""
+    raw = open(msh_path, "rb").read()
+    out: Dict[str, object] = {
+        "path": os.path.abspath(msh_path),
+        "format": "unknown",
+        "binary": None,
+        "node_count": None,
+        "bbox_min": None,
+        "bbox_max": None,
+        "bbox_size": None,
+        "element_count": None,
+        "element_types": {},
+        "warnings": [],
+    }
+
+    fmt_match = re.search(rb"\$MeshFormat\s+([^\n\r]+)", raw)
+    if not fmt_match:
+        out["warnings"].append("missing $MeshFormat section")
+        return out
+
+    fmt_parts = fmt_match.group(1).decode("ascii", errors="replace").split()
+    if len(fmt_parts) >= 3:
+        out["format"] = fmt_parts[0]
+        out["binary"] = fmt_parts[1] == "1"
+        data_size = int(fmt_parts[2])
+    else:
+        out["warnings"].append(f"unrecognized MeshFormat line: {fmt_parts}")
+        return out
+
+    endian = "<"
+    endian_probe = raw[fmt_match.end():fmt_match.end() + 16]
+    if out["binary"] and len(endian_probe) >= 5:
+        probe = endian_probe.lstrip(b"\r\n")
+        if len(probe) >= 4 and struct.unpack(">i", probe[:4])[0] == 1:
+            endian = ">"
+
+    def section_after_count(section: bytes):
+        marker = b"$" + section
+        start = raw.find(marker)
+        if start < 0:
+            return None, None
+        offset = start + len(marker)
+        while offset < len(raw) and raw[offset] in b"\r\n\t ":
+            offset += 1
+        end = raw.find(b"\n", offset)
+        if end < 0:
+            return None, None
+        count = int(raw[offset:end].strip())
+        return count, end + 1
+
+    node_count, node_offset = section_after_count(b"Nodes")
+    if node_count is not None:
+        out["node_count"] = node_count
+        points = []
+        try:
+            if out["binary"]:
+                rec = struct.Struct(endian + "i" + ("d" if data_size == 8 else "f") * 3)
+                for i in range(node_count):
+                    _, x, y, z = rec.unpack_from(raw, node_offset + i * rec.size)
+                    points.append((x, y, z))
+            else:
+                text = raw[node_offset:raw.find(b"$EndNodes", node_offset)].decode("utf-8", errors="replace")
+                for line in text.splitlines()[:node_count]:
+                    parts = line.split()
+                    if len(parts) >= 4:
+                        points.append(tuple(float(x) for x in parts[1:4]))
+        except Exception as exc:
+            out["warnings"].append(f"could not parse nodes: {type(exc).__name__}: {exc}")
+        if points:
+            cols = list(zip(*points))
+            bbox_min = [min(col) for col in cols]
+            bbox_max = [max(col) for col in cols]
+            bbox_size = [hi - lo for lo, hi in zip(bbox_min, bbox_max)]
+            out["bbox_min"] = [float(x) for x in bbox_min]
+            out["bbox_max"] = [float(x) for x in bbox_max]
+            out["bbox_size"] = [float(x) for x in bbox_size]
+            if max(bbox_size) < 1e-4:
+                out["warnings"].append("mesh bounding box is extremely small before flexcomp scaling")
+            if max(bbox_size) > 10.0:
+                out["warnings"].append("mesh bounding box is very large before flexcomp scaling")
+
+    elem_count, elem_offset = section_after_count(b"Elements")
+    if elem_count is not None:
+        out["element_count"] = elem_count
+        node_counts = {1: 2, 2: 3, 3: 4, 4: 4, 5: 8, 8: 3, 9: 6, 10: 9, 11: 10, 15: 1}
+        element_types: Dict[int, int] = defaultdict(int)
+        try:
+            if out["binary"]:
+                offset = elem_offset
+                parsed = 0
+                block_header = struct.Struct(endian + "iii")
+                while parsed < elem_count:
+                    etype, block_n, tag_n = block_header.unpack_from(raw, offset)
+                    offset += block_header.size
+                    n_nodes = node_counts.get(etype)
+                    if n_nodes is None:
+                        out["warnings"].append(f"unknown Gmsh element type {etype}")
+                        break
+                    rec_ints = 1 + tag_n + n_nodes
+                    rec = struct.Struct(endian + "i" * rec_ints)
+                    for _ in range(block_n):
+                        rec.unpack_from(raw, offset)
+                        offset += rec.size
+                    element_types[etype] += block_n
+                    parsed += block_n
+            else:
+                text = raw[elem_offset:raw.find(b"$EndElements", elem_offset)].decode("utf-8", errors="replace")
+                for line in text.splitlines()[:elem_count]:
+                    parts = line.split()
+                    if len(parts) >= 2:
+                        element_types[int(parts[1])] += 1
+        except Exception as exc:
+            out["warnings"].append(f"could not parse elements: {type(exc).__name__}: {exc}")
+        out["element_types"] = {str(k): int(v) for k, v in sorted(element_types.items())}
+        if element_types and not any(k in element_types for k in (4, 11)):
+            out["warnings"].append("no tetrahedral element types found; MuJoCo gmsh flexcomp expects a volume mesh")
+
+    return out
+
+
+def write_msh_diagnostics(msh_path: str, out_path: str) -> None:
+    report = analyze_gmsh_msh(msh_path)
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(report, f, indent=2, sort_keys=True)
+        f.write("\n")
+    warnings = report.get("warnings") or []
+    if warnings:
+        print(f"[WARN] MSH diagnostics for {msh_path}: {'; '.join(str(w) for w in warnings)}")
+    print(f"[OK] Wrote MSH diagnostics: {out_path}")
 
 # =========================
 # 1) SHARED SENSOR BUILDER
@@ -720,6 +1019,7 @@ def patch_env_object_to_custom_msh(
     object_pos: str = "1 0.87 0.4",
     flex_scale: str = "0.025 0.025 0.025",
     flex_radius: str = "0.001",
+    deformable_preset: str = DEFAULT_DEFORMABLE_PRESET,
 ):
     """
     Replace the default block geoms in <body name='object'> with a custom .msh flexcomp.
@@ -731,16 +1031,16 @@ def patch_env_object_to_custom_msh(
     if worldbody is None:
         raise SystemExit(f"ERROR: no <worldbody> in {env_xml}")
 
+    preset = get_deformable_preset(deformable_preset) if deformable else {}
+
     if deformable:
-        # Match stable deformable simulation settings from stable_row1.
+        # Flex simulations must survive contact-rich RL rollouts, not just passive drops.
         option = root.find("option")
         if option is not None:
-            option.set("timestep", "0.0001")
-            option.set("integrator", "implicitfast")
-            option.set("solver", "CG")
-            option.set("tolerance", "1e-8")
-            option.set("iterations", "100")
-            option.set("apirate", "200")
+            option_attrs = preset.get("option", {})
+            if isinstance(option_attrs, dict):
+                for key, value in option_attrs.items():
+                    option.set(str(key), str(value))
             flag = option.find("flag")
             if flag is None:
                 ET.SubElement(option, "flag", {"warmstart": "enable"})
@@ -750,6 +1050,8 @@ def patch_env_object_to_custom_msh(
         floor0_geom = worldbody.find("./geom[@name='floor0']")
         if floor0_geom is not None:
             floor0_geom.set("condim", "1")
+            floor0_geom.set("contype", "2")
+            floor0_geom.set("conaffinity", "2")
 
     object_body = None
     for body in worldbody.findall("body"):
@@ -764,11 +1066,25 @@ def patch_env_object_to_custom_msh(
     for ch in list(object_body):
         object_body.remove(ch)
 
-    ET.SubElement(object_body, "joint", {"name": "object:joint", "type": "free", "damping": "0.05"})
+    joint_damping = str(preset.get("joint_damping", "1.0")) if deformable else "0.05"
+    ET.SubElement(object_body, "joint", {"name": "object:joint", "type": "free", "damping": joint_damping})
 
     if deformable:
-        # Match stable deformable-object parameters used by the reference stable_row1 XML.
         object_body.set("quat", "1 0 0 0")
+        proxy_radius = flex_scale.split()[0]
+        ET.SubElement(
+            object_body,
+            "geom",
+            {
+                "name": "object",
+                "type": "sphere",
+                "size": proxy_radius,
+                "rgba": "0 0 0 0",
+                "condim": "1",
+                "contype": "0",
+                "conaffinity": "3",
+            },
+        )
         ET.SubElement(
             object_body,
             "inertial",
@@ -793,12 +1109,19 @@ def patch_env_object_to_custom_msh(
         ET.SubElement(
             flex,
             "elasticity",
-            {"young": "1000000.0", "poisson": "0.45", "damping": "0.001"},
+            {
+                "young": f"{float(preset['young']):.12g}",
+                "poisson": f"{float(preset['poisson']):.12g}",
+                "damping": f"{float(preset['damping']):.12g}",
+            },
         )
+        contact_attrs = preset.get("contact", {})
+        if not isinstance(contact_attrs, dict):
+            contact_attrs = {}
         ET.SubElement(
             flex,
             "contact",
-            {"selfcollide": "none", "internal": "false", "friction": "1 0.005 0.0001"},
+            {str(key): str(value) for key, value in contact_attrs.items()},
         )
         ET.SubElement(
             object_body,
@@ -880,6 +1203,19 @@ def patch_env_object_to_custom_msh(
 
     tree.write(env_xml, encoding="utf-8", xml_declaration=True)
 
+
+def patch_shared_for_deformable(shared_xml: str, deformable_preset: str = DEFAULT_DEFORMABLE_PRESET) -> None:
+    """Raise contact/stack limits for generated deformable candidates."""
+    preset = get_deformable_preset(deformable_preset)
+    tree = ET.parse(shared_xml)
+    root = tree.getroot()
+    size = root.find("size")
+    if size is None:
+        size = ET.SubElement(root, "size")
+    size.set("nconmax", str(int(preset.get("nconmax", 10000))))
+    size.set("nstack", str(int(preset.get("nstack", 8000000))))
+    tree.write(shared_xml, encoding="utf-8", xml_declaration=True)
+
 # =======================
 # 4) HIGH-LEVEL MODES
 # =======================
@@ -924,6 +1260,7 @@ def build_candidate_standalone(
     object_pos: str = "1 0.87 0.4",
     object_mass: str | float = "0.07",
     object_inertia: str = "1e-3 1e-3 1e-3",
+    deformable_preset: str = DEFAULT_DEFORMABLE_PRESET,
 ) -> Dict[str, str]:
     """
     No side effects. Returns dict with paths:
@@ -949,6 +1286,9 @@ def build_candidate_standalone(
             if force or (not os.path.exists(msh_dst)):
                 shutil.copy2(custom_msh, msh_dst)
                 print(f"[OK] Copied custom .msh: {msh_dst}")
+            diag_path = os.path.join(paths["dir"], f"{os.path.splitext(msh_basename)[0]}_msh_diagnostics.json")
+            if force or (not os.path.exists(diag_path)):
+                write_msh_diagnostics(msh_dst, diag_path)
             patch_env_object_to_custom_msh(
                 paths["env"],
                 os.path.basename(msh_dst),
@@ -958,6 +1298,7 @@ def build_candidate_standalone(
                 object_pos=object_pos,
                 flex_scale=flex_scale,
                 flex_radius=flex_radius,
+                deformable_preset=deformable_preset,
             )
         print(f"[OK] Wrote standalone env: {paths['env']}")
     else:
@@ -970,6 +1311,9 @@ def build_candidate_standalone(
             if force or (not os.path.exists(msh_dst)):
                 shutil.copy2(custom_msh, msh_dst)
                 print(f"[OK] Copied custom .msh: {msh_dst}")
+            diag_path = os.path.join(paths["dir"], f"{os.path.splitext(msh_basename)[0]}_msh_diagnostics.json")
+            if force or (not os.path.exists(diag_path)):
+                write_msh_diagnostics(msh_dst, diag_path)
     
     # Copy shared assets needed by the standalone environment
     assets_dir = os.path.dirname(base_xml)
@@ -983,6 +1327,11 @@ def build_candidate_standalone(
             print(f"[OK] Copied asset: {dst}")
         else:
             print(f"[SKIP] Using cached asset: {dst}")
+
+    if deformable_object:
+        patch_shared_for_deformable(os.path.join(paths["dir"], "shared.xml"), deformable_preset=deformable_preset)
+        print(f"[OK] Patched deformable shared limits: {os.path.join(paths['dir'], 'shared.xml')}")
+
     # Copy mesh assets referenced by shared_asset.xml
     shared_asset_path = os.path.join(paths["dir"], "shared_asset.xml")
     asset_tree = ET.parse(shared_asset_path)
@@ -1042,6 +1391,12 @@ def main():
         action="store_true",
         help="When --task is a custom .msh, patch object body as deformable (stable_row1 params).",
     )
+    p.add_argument(
+        "--deformable-preset",
+        choices=deformable_preset_names(),
+        default=DEFAULT_DEFORMABLE_PRESET,
+        help="Named rubber-like deformable material/contact/solver preset.",
+    )
 
     # Legacy/in-place mode
     p.add_argument("--main",  help="Path to main task XML to update includes, e.g., assets/manipulate_block_touch_sensors.xml")
@@ -1074,9 +1429,16 @@ def main():
     size_label = infer_custom_object_size_label(task_cfg["custom_msh"]) or "medium"
     size_multiplier = SIZE_SCALE_MULTIPLIERS[size_label]
     flex_scale = _scale_triplet(0.025, size_multiplier)
-    flex_radius = _scale_scalar(0.001, size_multiplier)
-    object_pos = infer_custom_object_spawn_position(size_label, args.deformable)
-    object_mass = _scale_mass(BASE_DEFORMABLE_MASS if args.deformable else BASE_RIGID_MASS, size_multiplier)
+    preset = get_deformable_preset(args.deformable_preset) if args.deformable else None
+    flex_radius_base = float(preset["flex_radius"]) if preset else 0.001
+    mass_base = float(preset["mass"]) if preset else BASE_RIGID_MASS
+    flex_radius = _scale_scalar(flex_radius_base, size_multiplier)
+    object_pos = (
+        deformable_preset_spawn_position(args.deformable_preset, size_label)
+        if args.deformable
+        else infer_custom_object_spawn_position(size_label, False)
+    )
+    object_mass = _scale_mass(mass_base, size_multiplier)
     object_inertia = _scale_diaginertia(
         BASE_DEFORMABLE_DIAGINERTIA if args.deformable else BASE_RIGID_DIAGINERTIA,
         size_multiplier,
@@ -1099,6 +1461,7 @@ def main():
             object_pos=object_pos,
             object_mass=object_mass,
             object_inertia=object_inertia,
+            deformable_preset=args.deformable_preset,
         )
         # Emit a small machine-friendly summary for BO loops
         print(json.dumps(paths, indent=2))

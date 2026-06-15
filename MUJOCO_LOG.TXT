@@ -1836,3 +1836,129 @@ WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Ti
 Mon Apr 27 11:43:19 2026
 WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.1472.
 
+Thu Jun  4 15:47:04 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.1501.
+
+Thu Jun  4 15:47:47 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.1507.
+
+Thu Jun  4 15:49:48 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.1341.
+
+Thu Jun  4 15:51:13 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 41. The simulation is unstable. Time = 0.1417.
+
+Thu Jun  4 15:51:37 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.1408.
+
+Thu Jun  4 15:52:37 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.1367.
+
+Thu Jun  4 15:53:44 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 1. The simulation is unstable. Time = 0.0070.
+
+Thu Jun  4 15:54:03 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 1. The simulation is unstable. Time = 0.0070.
+
+Thu Jun  4 15:54:07 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 1. The simulation is unstable. Time = 0.0086.
+
+Thu Jun  4 15:54:40 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 45. The simulation is unstable. Time = 0.1966.
+
+Thu Jun  4 15:55:04 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 1. The simulation is unstable. Time = 0.1408.
+
+Thu Jun  4 15:55:24 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.1455.
+
+Thu Jun  4 15:56:17 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.2223.
+
+Thu Jun  4 15:56:54 2026
+WARNING: Insufficient arena memory for the number of constraints generated. Increase arena memory allocation above 14M bytes. Time = 0.0000.
+
+Thu Jun  4 15:57:20 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 1000) Time = 0.1998.
+
+Thu Jun  4 15:58:07 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 52. The simulation is unstable. Time = 0.1562.
+
+Thu Jun  4 15:58:27 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 1000) Time = 0.1788.
+
+Thu Jun  4 15:58:27 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.1788.
+
+Thu Jun  4 15:59:28 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.1788.
+
+Thu Jun  4 16:00:11 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.1963.
+
+Thu Jun  4 16:01:03 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 31. The simulation is unstable. Time = 0.1980.
+
+Thu Jun  4 16:01:34 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 27. The simulation is unstable. Time = 0.1990.
+
+Thu Jun  4 16:02:13 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.1507.
+
+Thu Jun  4 16:02:31 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 31. The simulation is unstable. Time = 0.1990.
+
+Thu Jun  4 16:03:06 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 27. The simulation is unstable. Time = 0.1990.
+
+Thu Jun  4 16:03:31 2026
+WARNING: Too many contacts. Either the arena memory is full, or nconmax is specified and is exceeded. Increase arena memory allocation, or increase/remove nconmax. (ncon = 1000) Time = 0.1319.
+
+Thu Jun  4 16:03:48 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.1963.
+
+Thu Jun  4 16:04:22 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.1979.
+
+Thu Jun  4 16:05:07 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.1944.
+
+Thu Jun  4 16:06:57 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.1944.
+
+Thu Jun  4 16:07:46 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.2134.
+
+Thu Jun  4 16:08:38 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.2533.
+
+Thu Jun  4 16:09:31 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.2385.
+
+Thu Jun  4 16:11:51 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.2533.
+
+Thu Jun  4 16:29:09 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.1067.
+
+Thu Jun  4 16:32:12 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.0880.
+
+Thu Jun  4 16:38:44 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.0733.
+
+Thu Jun  4 16:39:53 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.0681.
+
+Thu Jun  4 16:42:14 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.0696.
+
+Thu Jun  4 17:04:18 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.3664.
+
+Tue Jun  9 14:49:36 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.2677.
+
+Tue Jun  9 14:53:36 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.2677.
+
