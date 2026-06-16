@@ -34,7 +34,7 @@ ENV_HYPERPARAMS = {
     "batch_size": 2048,
     "gamma": 0.95,
     "learning_rate": 1e-3,
-    "learning_starts": 4000,
+    "learning_starts": 8000,
     "tau": 0.05,
     "n_sampled_goal": 4,
     "goal_selection_strategy": "future",
@@ -57,6 +57,8 @@ def parse_args():
         help="frequency of evaluation (in timesteps)")
     parser.add_argument("--eval-episodes", type=int, default=50,
         help="number of episodes for evaluation")
+    parser.add_argument("--eval-video-steps", type=int, default=200,
+        help="Maximum env steps to record for each evaluation video.")
     parser.add_argument("--save-freq", type=int, default=200000,
         help="frequency of saving model and stats (in timesteps)")
     parser.add_argument("--gradient-save-freq", type=int, default=100000,
@@ -470,7 +472,7 @@ if __name__ == "__main__":
                  object_id=None, candidate_id=None, physics_mode=None,
                  video_root=None, disable_eval_video=False, action_scale=1.0,
                  action_clip=None, action_smoothing=0.0, reset_settle_steps=0,
-                 max_episode_steps=100, **kwargs):
+                 max_episode_steps=100, eval_video_steps=200, **kwargs):
             super().__init__(**kwargs)
             self.vec_env = vec_env
             self.eval_env = eval_env
@@ -502,6 +504,7 @@ if __name__ == "__main__":
             self.action_smoothing = action_smoothing
             self.reset_settle_steps = reset_settle_steps
             self.max_episode_steps = max_episode_steps
+            self.eval_video_steps = eval_video_steps
             self.checkpoint_steps = []
             self.success_curve = []
             self._last_eval_ts = 0
@@ -589,7 +592,7 @@ if __name__ == "__main__":
                             video_eval_env,
                             video_path,
                             record_video_trigger=lambda x: x == 0,  # record only first episode
-                            video_length=200,
+                            video_length=self.eval_video_steps,
                             name_prefix=f"eval-{self.n_calls}"
                         )
                         
@@ -611,7 +614,7 @@ if __name__ == "__main__":
                             
                         done = False
                         step_count = 0
-                        max_steps = 200  # Maximum video length
+                        max_steps = self.eval_video_steps  # Maximum video length
                         
                         print("Recording evaluation episode...")
                         while not done and step_count < max_steps:
@@ -750,6 +753,7 @@ if __name__ == "__main__":
             action_smoothing=args.action_smoothing,
             reset_settle_steps=args.reset_settle_steps,
             max_episode_steps=args.max_episode_steps,
+            eval_video_steps=args.eval_video_steps,
 
 
             gradient_save_freq=args.gradient_save_freq,
