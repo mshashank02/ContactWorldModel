@@ -556,13 +556,13 @@ if __name__ == "__main__":
             step_ts = int(self.model.num_timesteps)
             
             if step_ts - self._last_save_ts >= self.save_freq:
-                stats_path = os.path.join(self.save_path, f"vecnorm_{self.n_calls}.pkl")
+                stats_path = os.path.join(self.save_path, f"vecnorm_{step_ts}.pkl")
                 self.vec_env.save(stats_path)
                 wandb.save(stats_path)
                 print(f"Saved VecNormalize stats to {stats_path}")
                 
                 # Save the model
-                model_path = os.path.join(self.save_path, f"model_{self.n_calls}_steps.zip")
+                model_path = os.path.join(self.save_path, f"model_{step_ts}_steps.zip")
                 self.model.save(model_path)
                 wandb.save(model_path)
                 print(f"Saved model to {model_path}")
@@ -588,7 +588,7 @@ if __name__ == "__main__":
                 )
                 
                 # Log evaluation metrics to wandb
-                wandb.log(eval_metrics, step=self.n_calls)
+                wandb.log(eval_metrics, step=step_ts)
                 
                 print(f"Evaluation results: {eval_metrics}")
 
@@ -600,16 +600,16 @@ if __name__ == "__main__":
                 # Save best model based on success rate if available
                 if 'eval/success_rate' in eval_metrics and eval_metrics['eval/success_rate'] > self.best_success_rate:
                     self.best_success_rate = eval_metrics['eval/success_rate']
-                    best_model_path = os.path.join(self.save_path, f"best_model_{self.n_calls}_steps.zip")
+                    best_model_path = os.path.join(self.save_path, f"best_model_{step_ts}_steps.zip")
                     self.model.save(best_model_path)
                     wandb.save(best_model_path)
                     print(f"New best model with success rate {self.best_success_rate:.2f} saved to {best_model_path}")
                 
                 if not self.disable_eval_video:
                     try:
-                        print(f"Creating evaluation video at step {self.n_calls}...")
+                        print(f"Creating evaluation video at step {step_ts}...")
                         
-                        video_path = os.path.join(self.video_root, f"eval_{self.n_calls}")
+                        video_path = os.path.join(self.video_root, f"eval_{step_ts}")
                         os.makedirs(video_path, exist_ok=True)
 
                         # fresh env dedicated to video (has render_mode='rgb_array')
@@ -632,7 +632,7 @@ if __name__ == "__main__":
                             video_path,
                             record_video_trigger=lambda x: x == 0,  # record only first episode
                             video_length=self.eval_video_steps,
-                            name_prefix=f"eval-{self.n_calls}"
+                            name_prefix=f"eval-{step_ts}"
                         )
                         
                         reset_return = video_env.reset()
@@ -709,8 +709,8 @@ if __name__ == "__main__":
                                 print(f"Logging video to wandb: {eval_video_path}")
                                 wandb.log({
                                     "eval/video": wandb.Video(eval_video_path, fps=30, format="mp4"),
-                                    "eval/video_step": self.n_calls
-                                }, step=self.n_calls)
+                                    "eval/video_step": step_ts
+                                }, step=step_ts)
                                 print("Successfully logged video to wandb")
                             else:
                                 print(f"Warning: Video file is empty or too small: {eval_video_path}")
