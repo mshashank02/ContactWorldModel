@@ -365,10 +365,12 @@ if __name__ == "__main__":
     model_root = os.path.join(args.artifact_root, "models", args.env_id)
     run_root = os.path.join(args.artifact_root, "runs", f"{args.env_id}_{args.num_envs}env_{args.seed}")
     wandb_root = os.path.join(args.artifact_root, "wandb")
+    wandb_artifact_root = os.path.join(args.artifact_root, "artifacts", "wandb", f"{args.env_id}_{args.num_envs}env_{args.seed}")
     os.makedirs(video_root, exist_ok=True)
     os.makedirs(model_root, exist_ok=True)
     os.makedirs(run_root, exist_ok=True)
     os.makedirs(wandb_root, exist_ok=True)
+    os.makedirs(wandb_artifact_root, exist_ok=True)
     
     # Build hyperparameters dict
     hyperparams = {
@@ -509,7 +511,7 @@ if __name__ == "__main__":
                  target_position, target_rotation, ignore_z_rot,
                  metrics_path=None, total_timesteps=None, task_label=None,
                  object_id=None, candidate_id=None, physics_mode=None,
-                 video_root=None, disable_eval_video=False, action_scale=1.0,
+                 video_root=None, wandb_artifact_path=None, disable_eval_video=False, action_scale=1.0,
                  action_clip=None, action_smoothing=0.0, reset_settle_steps=0,
                  max_episode_steps=100, eval_video_steps=200, **kwargs):
             super().__init__(**kwargs)
@@ -537,6 +539,7 @@ if __name__ == "__main__":
             self.candidate_id = candidate_id
             self.physics_mode = physics_mode
             self.video_root = video_root
+            self.wandb_artifact_path = wandb_artifact_path
             self.disable_eval_video = disable_eval_video
             self.action_scale = action_scale
             self.action_clip = action_clip
@@ -549,7 +552,36 @@ if __name__ == "__main__":
             self._last_eval_ts = 0
             self._last_save_ts = 0
 
+        def _safe_artifact_name(self, value):
+            return "".join(c if c.isalnum() or c in "-_." else "-" for c in value)
+        
+        def _save_and_upload_best_model(self, step_ts, success_rate):
+            if self.wandb_artifact_path is None:
+                self.wandb_artifact_path = self.save_path
+            os.makedirs(self.wandb_artifact_path, exist_ok=True)
 
+            best_model_path = os.path.join(self.wandb_artifact_path, "best_model.zip")
+            best_stats_path = os.path.join(self.wandb_artifact_path, "best_vecnorm.pkl")
+            self.model.save(best_model_path)
+            self.vec_env.save(best_stats_path)
+
+            artifact_name = self._safe_artifact_name(f"{self.env_id}-{self.seed}-best-model")
+            artifact = wandb.Artifact(
+                name=artifact_name,
+                type="model",
+                metadata={
+                    "env_id": self.env_id,
+                    "seed": int(self.seed),
+                    "step": int(step_ts),
+                    "success_rate": float(success_rate),
+                },
+            )
+            artifact.add_file(best_model_path, name="best_model.zip")
+            artifact.add_file(best_stats_path, name="best_vecnorm.pkl")
+            logged_artifact = wandb.run.log_artifact(artifact, aliases=["best", "latest"])
+            logged_artifact.wait()
+            print(f"Uploaded best model artifact '{artifact_name}' at {step_ts} timesteps")
+            return best_model_path
             
         def _on_step(self):
             super()._on_step()
@@ -564,7 +596,6 @@ if __name__ == "__main__":
                 # Save the model
                 model_path = os.path.join(self.save_path, f"model_{step_ts}_steps.zip")
                 self.model.save(model_path)
-                wandb.save(model_path)
                 print(f"Saved model to {model_path}")
 
                 self._last_save_ts = step_ts
@@ -600,9 +631,7 @@ if __name__ == "__main__":
                 # Save best model based on success rate if available
                 if 'eval/success_rate' in eval_metrics and eval_metrics['eval/success_rate'] > self.best_success_rate:
                     self.best_success_rate = eval_metrics['eval/success_rate']
-                    best_model_path = os.path.join(self.save_path, f"best_model_{step_ts}_steps.zip")
-                    self.model.save(best_model_path)
-                    wandb.save(best_model_path)
+                    best_model_path = self._save_and_upload_best_model(step_ts, self.best_success_rate)
                     print(f"New best model with success rate {self.best_success_rate:.2f} saved to {best_model_path}")
                 
                 if not self.disable_eval_video:
@@ -787,6 +816,7 @@ if __name__ == "__main__":
             candidate_id=args.candidate_id,
             physics_mode=args.physics_mode,
             video_root=video_root,
+            wandb_artifact_path=wandb_artifact_root,
             disable_eval_video=args.disable_eval_video,
             action_scale=args.action_scale,
             action_clip=args.action_clip,
