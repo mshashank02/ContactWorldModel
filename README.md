@@ -6,7 +6,7 @@ Touch-sensor-based in-hand manipulation with Shadow Hand, trained using **TQC + 
 
 - Supports standalone environment generation via `pipeline_generate.py`.
 - Supports custom mesh tasks via `--task /path/to/object.msh`.
-- Supports deformable custom-object generation via `--deformable` (when `--task` is a `.msh`).
+- Supports deformable generation via `--deformable` for custom `.msh` objects and the built-in `egg` task.
 - Training entrypoint is `ShadowHand_TQC.py` with dynamic XML loading (`--xml-path`).
 
 ## Compatibility (validated)
@@ -57,8 +57,22 @@ python pipeline_generate.py --standalone \
 ```
 
 Notes:
-- `--deformable` is valid only when `--task` points to a `.msh` file.
+- `--deformable` is valid when `--task` points to a `.msh` file or when `--task egg` is selected.
 - Generated deformable settings are aligned to the stable reference config used in this repo.
+
+## Generate Deformable Egg Env
+
+```bash
+python pipeline_generate.py --standalone \
+  --base assets/hand_base.xml \
+  --task egg \
+  --deformable \
+  --deformable-preset soft_rubber_stable \
+  --Ntotal 100 --Rppx 0.5 --Rpt 1 \
+  --out-root generated --force
+```
+
+This creates `generated/egg_deformable_100_0.5_1/` and an on-demand tetrahedral egg mesh at `generated/builtin_deformable/egg_deformable.msh`. The generated mesh is scaled by the same `0.025 0.025 0.025` flex scale and approximates the rigid egg dimensions (`0.03 0.03 0.04` meters).
 
 ## Generate + Train in One Step
 
@@ -73,6 +87,52 @@ python generate_and_train.py \
   --num-envs 1 --seed 0 --learning-starts 1000
 ```
 
+Deformable egg training:
+
+```bash
+WANDB_MODE=disabled python generate_and_train.py \
+  --base assets/hand_base.xml \
+  --task egg \
+  --deformable \
+  --deformable-preset soft_rubber_stable \
+  --Ntotal 100 --Rppx 0.5 --Rpt 1 \
+  --out-root generated --force -- \
+  --num-envs 1 --seed 0 \
+  --n-timesteps 1000000 \
+  --learning-starts 8000 \
+  --disable-eval-video
+```
+
+For a quick runtime check before a long job, keep the generated XML and run:
+
+```bash
+python validate_deformable_rollout.py \
+  --xml-path generated/egg_deformable_100_0.5_1/manipulate_egg_deformable_touch_sensors_100_0.5_1.xml \
+  --passive-steps 2000 \
+  --env-steps 80 \
+  --training-steps 64
+```
+
+For on-screen qualitative inspection, open the human MuJoCo viewer:
+
+```bash
+python render_xml_rollout.py \
+  --xml-path generated/egg_deformable_100_0.5_1/manipulate_egg_deformable_touch_sensors_100_0.5_1.xml \
+  --action-mode zero \
+  --steps 1000
+```
+
+Use random hand actions when you want to stress the object visually:
+
+```bash
+python render_xml_rollout.py \
+  --xml-path generated/egg_deformable_100_0.5_1/manipulate_egg_deformable_touch_sensors_100_0.5_1.xml \
+  --action-mode random \
+  --steps 1000
+```
+
+You can also watch a real training run by adding `--render-human --num-envs 1` after the `--` in `generate_and_train.py`.
+
 ## `generate_and_train.py` Flag Reference
 
 Flags before `--` control environment generation and simulation parameters.
@@ -85,7 +145,7 @@ Flags after `--` are forwarded directly to `ShadowHand_TQC.py` and control RL tr
 | `--base` | Base hand XML used to place touch sites on the Shadow Hand | Yes | Uses `assets/hand_base.xml` as the geometry/source for sensor-site placement |
 | `--task block|egg|pen` | Use built-in task template | Yes | Chooses template env XML: block/egg/pen |
 | `--task /path/to/object.msh` | Use a custom mesh object | Yes | Replaces default task object with custom `.msh` `flexcomp` in generated env |
-| `--deformable` | Treat custom `.msh` as deformable | Yes | Switches object to deformable `flexcomp` and applies the stable deformable simulation settings below |
+| `--deformable` | Treat supported object as deformable | Yes | Switches custom `.msh` objects or built-in `egg` to deformable `flexcomp` and applies the stable deformable simulation settings below |
 | `--Ntotal` | Total number of touch sensors | Yes | Total sensors allocated across palm, phalanges, and tips |
 | `--Rppx` | Palm-to-phalanges ratio control | Yes | Controls allocation of sensors between palm and non-tip phalanges |
 | `--Rpt` | Palm-to-tip ratio control | Yes | Controls allocation of sensors between palm and fingertips |
@@ -126,30 +186,30 @@ Flags after `--` are forwarded directly to `ShadowHand_TQC.py` and control RL tr
 
 ### Stable Deformable Simulation Settings
 
-These settings are applied when using a custom `.msh` with `--deformable`. They are the stable deformable settings this repo currently treats as the working reference.
+These settings are applied when using a custom `.msh` with `--deformable --deformable-preset soft_rubber_stable`. Built-in `egg --deformable` uses the same material/contact settings, but its generated XML overrides `option timestep` and `option iterations` to a faster egg-specific setting that is still much more conservative than rigid timing.
 
 | XML Parameter | Value |
 |---|---|
-| `option timestep` | `0.00002` |
+| `option timestep` | `0.00002` for custom `.msh`; `0.00004` for built-in deformable egg |
 | `option integrator` | `implicitfast` |
 | `option solver` | `CG` |
-| `option tolerance` | `1e-8` |
-| `option iterations` | `100` |
+| `option tolerance` | `1e-10` |
+| `option iterations` | `200` for custom `.msh`; `150` for built-in deformable egg |
 | `option apirate` | `200` |
 | `option/flag warmstart` | `enable` |
 | `floor0 condim` | `1` |
-| `elasticity young` | `20000.0` |
-| `elasticity poisson` | `0.45` |
-| `elasticity damping` | `0.03` |
+| `elasticity young` | `500000` |
+| `elasticity poisson` | `0.38` |
+| `elasticity damping` | `0.02` |
 | `contact selfcollide` | `none` |
 | `contact internal` | `false` |
-| `contact friction` | `1 0.005 0.0001` |
+| `contact friction` | `0.6 0.002 0.0001` |
 | `contact condim` | `1` |
-| `contact solref` | `0.05 1` |
-| `contact solimp` | `0.7 0.9 0.01` |
+| `contact solref` | `0.08 1` |
+| `contact solimp` | `0.6 0.82 0.005` |
 | `object:joint damping` | `1.0` |
-| deformable `shared.xml nconmax` | `8000` |
-| deformable `shared.xml nstack` | `5000000` |
+| deformable `shared.xml nconmax` | `10000` |
+| deformable `shared.xml nstack` | `8000000` |
 
 ### Shared Env Defaults Copied Into Standalone Candidates
 
@@ -213,7 +273,7 @@ These flags are parsed by `ShadowHand_TQC.py`, not by the generator.
 
 - Flags before `--` mainly control environment generation and simulation parameters.
 - Flags after `--` control RL training behavior.
-- The stable deformable simulation settings are activated specifically by `--deformable` on a custom `.msh`.
+- The stable deformable simulation settings are activated specifically by `--deformable` on a custom `.msh` or built-in `egg`.
 
 ## Cluster Training Sizing
 

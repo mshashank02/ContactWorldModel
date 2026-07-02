@@ -131,6 +131,13 @@ def parse_args():
         help="wandb project name")
     parser.add_argument("--wandb-name", type=str, default=None,
         help="wandb run name")
+    parser.add_argument("--wandb-entity", type=str, default=None,
+        help="Optional wandb entity/team name.")
+    parser.add_argument("--wandb-id", type=str, default=None,
+        help="Optional wandb run id to resume.")
+    parser.add_argument("--wandb-resume", type=str, default=None,
+        choices=["allow", "must", "never", "auto"],
+        help="W&B resume behavior used with --wandb-id.")
     parser.add_argument("--disable-eval-video", action="store_true",
         help="Disable expensive evaluation video generation during training.")
     
@@ -140,6 +147,12 @@ def parse_args():
     parser.add_argument("--object-id", type=str, default=None)
     parser.add_argument("--candidate-id", type=str, default=None)
     parser.add_argument("--physics-mode", type=str, default=None, choices=["rigid", "deformable"])
+    parser.add_argument("--resume-model", type=str, default=None,
+        help="Path to a saved SB3 model .zip to continue training from.")
+    parser.add_argument("--resume-vecnorm", type=str, default=None,
+        help="Path to saved VecNormalize stats .pkl matching --resume-model.")
+    parser.add_argument("--resume-reset-num-timesteps", action="store_true",
+        help="Reset SB3 timestep counter when resuming. By default resumed runs continue the counter.")
     args = parser.parse_args()
 
     # Normalize to absolute path and sanity-check
@@ -147,6 +160,14 @@ def parse_args():
     if not os.path.isfile(args.xml_path):
         raise FileNotFoundError(f"XML not found at {args.xml_path}")
     args.artifact_root = os.path.abspath(args.artifact_root)
+    if args.resume_model is not None:
+        args.resume_model = os.path.abspath(args.resume_model)
+        if not os.path.isfile(args.resume_model):
+            raise FileNotFoundError(f"Resume model not found at {args.resume_model}")
+    if args.resume_vecnorm is not None:
+        args.resume_vecnorm = os.path.abspath(args.resume_vecnorm)
+        if not os.path.isfile(args.resume_vecnorm):
+            raise FileNotFoundError(f"Resume VecNormalize stats not found at {args.resume_vecnorm}")
     
     # Auto-generate wandb name if not provided
     if args.wandb_name is None:
@@ -387,12 +408,15 @@ if __name__ == "__main__":
     }
     
     run = wandb.init(
+        entity=args.wandb_entity,
         project=args.wandb_project,
         config=env_config,
         sync_tensorboard=True,
         monitor_gym=True,
         save_code=True,
         name=args.wandb_name,
+        id=args.wandb_id,
+        resume=args.wandb_resume,
         dir=wandb_root,
     )
     
@@ -424,7 +448,13 @@ if __name__ == "__main__":
         env = SubprocVecEnv(env_fns, start_method="spawn")
 
     normalize_kwargs = {"gamma": hyperparams["gamma"]}
-    env = VecNormalize(env, **normalize_kwargs)
+    if args.resume_vecnorm:
+        env = VecNormalize.load(args.resume_vecnorm, env)
+        env.training = True
+        env.norm_reward = True
+        print(f"Loaded VecNormalize stats from: {args.resume_vecnorm}")
+    else:
+        env = VecNormalize(env, **normalize_kwargs)
 
     # env = VecVideoRecorder(
     #     env,
@@ -453,16 +483,25 @@ if __name__ == "__main__":
     
     n_timesteps = int(args.n_timesteps)
     
-    # Create model
-    model = TQC(
-        env=env, 
-        replay_buffer_class=HerReplayBuffer, 
-        verbose=args.verbose,
-        seed=args.seed, 
-        device=device,
-        tensorboard_log=run_root,
-        **hyperparams
-    )
+    if args.resume_model:
+        model = TQC.load(
+            args.resume_model,
+            env=env,
+            device=device,
+            tensorboard_log=run_root,
+        )
+        model.verbose = args.verbose
+        print(f"Loaded model checkpoint from: {args.resume_model}")
+    else:
+        model = TQC(
+            env=env, 
+            replay_buffer_class=HerReplayBuffer, 
+            verbose=args.verbose,
+            seed=args.seed, 
+            device=device,
+            tensorboard_log=run_root,
+            **hyperparams
+        )
 
     class EvalAndSaveCallback(WandbCallback):
         def __init__(self, vec_env, eval_env, model, save_freq, eval_freq, eval_episodes, 
@@ -724,6 +763,7 @@ if __name__ == "__main__":
     # Custom callback
     model.learn(
         total_timesteps=n_timesteps,
+        reset_num_timesteps=(not args.resume_model) or args.resume_reset_num_timesteps,
         callback=EvalAndSaveCallback(
             vec_env=env,
             xml_path=args.xml_path,

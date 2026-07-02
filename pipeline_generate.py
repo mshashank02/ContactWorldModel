@@ -220,6 +220,10 @@ DEFORMABLE_PRESETS: Dict[str, Dict[str, object]] = {
 }
 
 DEFAULT_DEFORMABLE_PRESET = "soft_rubber_stable"
+EGG_DEFORMABLE_FAST_OPTION_OVERRIDES = {
+    "timestep": "0.00004",
+    "iterations": "150",
+}
 
 
 def deformable_preset_names() -> list[str]:
@@ -300,6 +304,89 @@ def parse_task_arg(task_arg: str) -> Dict[str, str | None]:
     raise SystemExit(
         "ERROR: --task must be one of {block, egg, pen} or a path to a .msh file."
     )
+
+
+def write_builtin_egg_msh(msh_path: str, ntheta: int = 16, nlayers: int = 9) -> None:
+    """Write a small tetrahedral egg volume mesh in Gmsh v2 ASCII format.
+
+    The mesh is normalized for flexcomp scale="0.025 0.025 0.025":
+    x/y radius ~= 1.2 -> 0.03m, z radius ~= 1.6 -> 0.04m.
+    """
+    if ntheta < 8:
+        raise ValueError("ntheta must be at least 8")
+    if nlayers < 5:
+        raise ValueError("nlayers must be at least 5")
+
+    nodes: list[tuple[float, float, float]] = []
+    centers: list[int] = []
+    rings: list[list[int] | None] = []
+
+    for layer_idx in range(nlayers):
+        u = -1.0 + 2.0 * layer_idx / (nlayers - 1)
+        z = 1.6 * u
+        # Make the lower half slightly fuller and the top slightly tapered, like the rigid egg task.
+        radius = max(0.0, math.sqrt(max(0.0, 1.0 - u * u)) * (1.0 - 0.16 * u))
+        center_id = len(nodes) + 1
+        nodes.append((0.0, 0.0, z))
+        centers.append(center_id)
+
+        if radius < 1e-8:
+            rings.append(None)
+            continue
+
+        ring: list[int] = []
+        for theta_idx in range(ntheta):
+            theta = 2.0 * math.pi * theta_idx / ntheta
+            x = 1.2 * radius * math.cos(theta)
+            y = 1.2 * radius * math.sin(theta)
+            ring.append(len(nodes) + 1)
+            nodes.append((x, y, z))
+        rings.append(ring)
+
+    elements: list[tuple[int, int, int, int]] = []
+
+    def add_tet(a: int, b: int, c: int, d: int) -> None:
+        if len({a, b, c, d}) == 4:
+            elements.append((a, b, c, d))
+
+    for layer_idx in range(nlayers - 1):
+        c0 = centers[layer_idx]
+        c1 = centers[layer_idx + 1]
+        r0 = rings[layer_idx]
+        r1 = rings[layer_idx + 1]
+
+        if r0 is None and r1 is None:
+            continue
+        if r0 is None and r1 is not None:
+            for i in range(ntheta):
+                j = (i + 1) % ntheta
+                add_tet(c0, c1, r1[i], r1[j])
+            continue
+        if r0 is not None and r1 is None:
+            for i in range(ntheta):
+                j = (i + 1) % ntheta
+                add_tet(c1, c0, r0[j], r0[i])
+            continue
+
+        assert r0 is not None and r1 is not None
+        for i in range(ntheta):
+            j = (i + 1) % ntheta
+            # Triangular prism between matching fan triangles, split into three tetrahedra.
+            add_tet(c0, r0[i], r0[j], r1[j])
+            add_tet(c0, r0[i], r1[j], r1[i])
+            add_tet(c0, r1[i], r1[j], c1)
+
+    os.makedirs(os.path.dirname(msh_path), exist_ok=True)
+    with open(msh_path, "w", encoding="utf-8") as f:
+        f.write("$MeshFormat\n2.2 0 8\n$EndMeshFormat\n")
+        f.write(f"$Nodes\n{len(nodes)}\n")
+        for idx, (x, y, z) in enumerate(nodes, start=1):
+            f.write(f"{idx} {x:.9g} {y:.9g} {z:.9g}\n")
+        f.write("$EndNodes\n")
+        f.write(f"$Elements\n{len(elements)}\n")
+        for idx, tet in enumerate(elements, start=1):
+            f.write(f"{idx} 4 0 {tet[0]} {tet[1]} {tet[2]} {tet[3]}\n")
+        f.write("$EndElements\n")
 
 
 def save_text_with_header(path: str, xml: str):
@@ -1020,6 +1107,7 @@ def patch_env_object_to_custom_msh(
     flex_scale: str = "0.025 0.025 0.025",
     flex_radius: str = "0.001",
     deformable_preset: str = DEFAULT_DEFORMABLE_PRESET,
+    deformable_option_overrides: Dict[str, str] | None = None,
 ):
     """
     Replace the default block geoms in <body name='object'> with a custom .msh flexcomp.
@@ -1040,6 +1128,9 @@ def patch_env_object_to_custom_msh(
             option_attrs = preset.get("option", {})
             if isinstance(option_attrs, dict):
                 for key, value in option_attrs.items():
+                    option.set(str(key), str(value))
+            if deformable_option_overrides:
+                for key, value in deformable_option_overrides.items():
                     option.set(str(key), str(value))
             flag = option.find("flag")
             if flag is None:
@@ -1267,6 +1358,20 @@ def build_candidate_standalone(
       {dir, shared, robot, env, env_basename, tag}
     """
     paths = make_candidate_paths(out_root, task, Ntotal, Rppx, Rpt)
+    builtin_msh: str | None = None
+    deformable_option_overrides = None
+    if deformable_object and custom_msh is None:
+        if task != "egg_deformable":
+            raise SystemExit("ERROR: built-in deformable generation currently supports --task egg only.")
+        builtin_mesh_dir = os.path.join(out_root, "builtin_deformable")
+        builtin_msh = os.path.join(builtin_mesh_dir, "egg_deformable.msh")
+        if force or (not os.path.exists(builtin_msh)):
+            write_builtin_egg_msh(builtin_msh)
+            print(f"[OK] Wrote built-in deformable egg .msh: {builtin_msh}")
+        custom_msh = builtin_msh
+        custom_msh_name = "egg_deformable.msh"
+        deformable_option_overrides = EGG_DEFORMABLE_FAST_OPTION_OVERRIDES
+
     # 1) shared + robot
     build_shared_and_robot(Ap, Apx, At, Ntotal, Rppx, Rpt, Ap1, Ap2, base_xml, paths["shared"], paths["robot"], force=force)
     # 2) standalone env that includes the basenames
@@ -1299,6 +1404,7 @@ def build_candidate_standalone(
                 flex_scale=flex_scale,
                 flex_radius=flex_radius,
                 deformable_preset=deformable_preset,
+                deformable_option_overrides=deformable_option_overrides,
             )
         print(f"[OK] Wrote standalone env: {paths['env']}")
     else:
@@ -1389,7 +1495,7 @@ def main():
     p.add_argument(
         "--deformable",
         action="store_true",
-        help="When --task is a custom .msh, patch object body as deformable (stable_row1 params).",
+        help="Patch object body as deformable. Supports custom .msh tasks and built-in egg.",
     )
     p.add_argument(
         "--deformable-preset",
@@ -1424,7 +1530,9 @@ def main():
     args = p.parse_args()
     task_cfg = parse_task_arg(args.task)
     if args.deformable and task_cfg["custom_msh"] is None:
-        sys.exit("ERROR: --deformable requires --task to be a path to a .msh file.")
+        if task_cfg["template_task"] != "egg":
+            sys.exit("ERROR: built-in --deformable currently supports --task egg only.")
+        task_cfg["task_label"] = "egg_deformable"
 
     size_label = infer_custom_object_size_label(task_cfg["custom_msh"]) or "medium"
     size_multiplier = SIZE_SCALE_MULTIPLIERS[size_label]

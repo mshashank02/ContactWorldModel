@@ -155,11 +155,20 @@ def build_run_label(candidate_id: str, object_id: str, physics_mode: str) -> str
     return sanitize_identifier(f"{candidate_id}_{object_id}_{physics_mode}")
 
 
-def build_run_artifact_relpath(study_name: str, candidate_id: str, object_id: str, physics_mode: str) -> str:
+def build_run_artifact_relpath(
+    study_name: str,
+    candidate_id: str,
+    object_id: str,
+    physics_mode: str,
+    study_root: Optional[str | Path] = None,
+) -> str:
+    root_parts = (
+        [str(study_root)]
+        if study_root is not None
+        else ["generated", "studies", sanitize_identifier(study_name)]
+    )
     return os.path.join(
-        "generated",
-        "studies",
-        sanitize_identifier(study_name),
+        *root_parts,
         "candidates",
         candidate_id,
         sanitize_identifier(object_id),

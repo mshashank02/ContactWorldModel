@@ -1,4 +1,5 @@
 import numpy as np
+import os
 import xml.etree.ElementTree as ET
 import traceback
 from gymnasium.utils.ezpickle import EzPickle
@@ -38,6 +39,10 @@ class DynamicXMLTouchEnv(MujocoManipulateTouchSensorsEnv, EzPickle):
         reset_settle_steps=0,
         **kwargs,
     ):
+        xml_path = os.path.abspath(xml_path)
+        if not os.path.isfile(xml_path):
+            raise FileNotFoundError(f"XML not found at {xml_path}")
+
         # Gymnasium-Robotics asserts that int(round(1/dt)) equals metadata['render_fps'].
         # For custom XMLs (e.g., timestep=1e-4), align render_fps dynamically.
         n_substeps = int(kwargs.get("n_substeps", 20))

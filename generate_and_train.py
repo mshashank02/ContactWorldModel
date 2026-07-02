@@ -132,6 +132,10 @@ def main():
         train_args = train_args[1:]
 
     task_cfg = parse_task_arg(args.task)
+    if args.deformable and task_cfg["custom_msh"] is None:
+        if task_cfg["template_task"] != "egg":
+            raise SystemExit("ERROR: built-in --deformable currently supports --task egg only.")
+        task_cfg["task_label"] = "egg_deformable"
     physics_mode = args.physics_mode or ("deformable" if args.deformable else "rigid")
     out_root = os.path.abspath(args.artifact_root or args.out_root)
     inferred_size_label = infer_object_size_label(task_cfg["custom_msh"])

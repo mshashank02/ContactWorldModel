@@ -159,6 +159,7 @@ def training_smoke(
     from sb3_contrib import TQC
     from ShadowHand_TQC import make_env
 
+    smoke_episode_steps = max(10, min(50, int(steps)))
     env = DummyVecEnv(
         [
             make_env(
@@ -168,7 +169,7 @@ def training_smoke(
                 target_position,
                 target_rotation,
                 ignore_z_rot,
-                max_steps=max(10, min(50, int(steps))),
+                max_steps=smoke_episode_steps,
                 action_scale=action_scale,
                 action_clip=action_clip,
                 action_smoothing=action_smoothing,
@@ -183,7 +184,7 @@ def training_smoke(
             env,
             replay_buffer_class=HerReplayBuffer,
             replay_buffer_kwargs={"goal_selection_strategy": "future", "n_sampled_goal": 2},
-            learning_starts=1,
+            learning_starts=smoke_episode_steps + 1,
             train_freq=1,
             gradient_steps=1,
             batch_size=32,

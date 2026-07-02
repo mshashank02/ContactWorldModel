@@ -55,6 +55,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--objects-root", required=True, help="Path to the study object folder containing manifest.csv.")
     parser.add_argument("--cluster-config", default="cluster_hosts.yaml")
     parser.add_argument("--db", default=None, help="Optional explicit path to the sqlite study DB.")
+    parser.add_argument(
+        "--study-root",
+        default=None,
+        help="Optional root for the study DB, reports, generated XMLs, metrics, stdout/stderr, models, videos, runs, and wandb files.",
+    )
     parser.add_argument("--base", default="assets/hand_base.xml", help="Base hand XML used by generate_and_train.py.")
     parser.add_argument("--init-candidates", type=int, default=4)
     parser.add_argument("--bo-candidates", type=int, default=4)
@@ -120,7 +125,7 @@ def initialize_study(
             "study_name": args.study_name,
             "objects_root_relpath": os.path.relpath(objects_root, repo_root),
             "base_xml_relpath": os.path.relpath(base_xml, repo_root),
-            "artifact_root_relpath": os.path.relpath(study_root, repo_root),
+            "artifact_root_relpath": str(study_root),
             "repo_root": str(repo_root),
             "seed": int(args.seed),
             "eval_episodes": int(args.eval_episodes),
@@ -159,12 +164,19 @@ def build_jobs_for_candidate(
     eval_episodes: int,
     force: bool,
     physics_modes: Sequence[str],
+    study_root: Optional[Path] = None,
 ) -> List[Dict[str, Any]]:
     _, _, _, _, Rppx, Rpt = map_alpha_beta_to_ratios(candidate.N, candidate.alpha, candidate.beta)
     jobs: List[Dict[str, Any]] = []
     for obj in study_objects:
         for physics_mode in physics_modes:
-            artifact_relpath = build_run_artifact_relpath(study_name, candidate.candidate_id, obj.object_id, physics_mode)
+            artifact_relpath = build_run_artifact_relpath(
+                study_name,
+                candidate.candidate_id,
+                obj.object_id,
+                physics_mode,
+                study_root=study_root,
+            )
             payload = {
                 "study_name": study_name,
                 "candidate_id": candidate.candidate_id,
@@ -339,6 +351,7 @@ def backfill_missing_candidate_jobs(
             eval_episodes=int(spec["eval_episodes"]),
             force=bool(spec["force"]),
             physics_modes=requested_modes,
+            study_root=Path(spec["artifact_root_relpath"]),
         )
         inserted = queue.enqueue_candidate_jobs(candidate, jobs, source=str(row["source"] or "backfill"))
         if inserted:
@@ -496,6 +509,7 @@ def coordinator_iteration(
                 eval_episodes=int(spec["eval_episodes"]),
                 force=bool(spec["force"]),
                 physics_modes=physics_modes,
+                study_root=study_root,
             )
             inserted = queue.enqueue_candidate_jobs(next_candidate, jobs, source=source)
             status["enqueued_candidate"] = next_candidate.candidate_id
@@ -513,7 +527,7 @@ def coordinator_iteration(
 def main() -> None:
     args = parse_args()
     repo_root = resolve_repo_root()
-    study_root = resolve_study_root(args.study_name, repo_root=repo_root)
+    study_root = Path(args.study_root).expanduser().resolve() if args.study_root else resolve_study_root(args.study_name, repo_root=repo_root)
     db_path = os.path.abspath(args.db or str(study_root / "study.db"))
 
     cluster_cfg = load_cluster_config(args.cluster_config, repo_dirname=repo_root.name)
