@@ -120,8 +120,8 @@ python optimize_dataset_gpbo.py \
   --study-name sphere_v1_demo \
   --objects-root study_objects/sphere_study_v1 \
   --cluster-config cluster_hosts.yaml \
-  --init-candidates 4 \
-  --bo-candidates 4 \
+  --init-candidates 5 \
+  --bo-candidates 5 \
   --expected-base-objects 4 \
   --once
 ```
