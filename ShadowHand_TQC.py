@@ -6,6 +6,7 @@ import gymnasium as gym
 import gymnasium_robotics
 import os
 import numpy as np
+import torch
 from sb3_contrib import TQC
 from stable_baselines3 import HerReplayBuffer
 from stable_baselines3.common.monitor import Monitor
@@ -33,7 +34,7 @@ ENV_HYPERPARAMS = {
     "batch_size": 2048,
     "gamma": 0.95,
     "learning_rate": 1e-3,
-    "learning_starts": 4000,
+    "learning_starts": 8000,
     "tau": 0.05,
     "n_sampled_goal": 4,
     "goal_selection_strategy": "future",
@@ -50,10 +51,14 @@ def parse_args():
             help="the verbosity of the logs")
     parser.add_argument("--num-envs", type=int, default=6,
         help="number of parallel environments")
+    parser.add_argument("--device", type=str, default="auto", choices=["auto", "cpu", "cuda"],
+        help="Torch device for TQC. 'auto' uses CUDA when available, otherwise CPU.")
     parser.add_argument("--eval-freq", type=int, default=20000,
         help="frequency of evaluation (in timesteps)")
     parser.add_argument("--eval-episodes", type=int, default=50,
         help="number of episodes for evaluation")
+    parser.add_argument("--eval-video-steps", type=int, default=200,
+        help="Maximum env steps to record for each evaluation video.")
     parser.add_argument("--save-freq", type=int, default=200000,
         help="frequency of saving model and stats (in timesteps)")
     parser.add_argument("--gradient-save-freq", type=int, default=100000,
@@ -77,10 +82,20 @@ def parse_args():
         choices=["xyz"], help="rotation axes spec (kept for completeness)")
     parser.add_argument("--render-human", action="store_true",
         help="Render training live in a MuJoCo viewer window (recommended with --num-envs 1).")
+    parser.add_argument("--max-episode-steps", type=int, default=100,
+        help="Maximum policy steps per episode before TimeLimit reset.")
     parser.add_argument("--debug-goals-live", action="store_true",
         help="Print achieved_goal and desired_goal live from the training env.")
     parser.add_argument("--debug-goals-every", type=int, default=1,
         help="Print goal debug every N env steps when --debug-goals-live is set.")
+    parser.add_argument("--action-scale", type=float, default=1.0,
+        help="Optional debug scale applied to policy actions before actuator mapping.")
+    parser.add_argument("--action-clip", type=float, default=None,
+        help="Optional symmetric clip applied to policy actions after scaling.")
+    parser.add_argument("--action-smoothing", type=float, default=0.0,
+        help="Exponential action smoothing factor in [0, 0.98]; 0 disables smoothing.")
+    parser.add_argument("--reset-settle-steps", type=int, default=0,
+        help="Zero-action env steps to settle the object immediately after reset.")
     
     # model hyperparameters
     parser.add_argument("--n-timesteps", type=float, default=ENV_HYPERPARAMS["n_timesteps"],
@@ -116,6 +131,13 @@ def parse_args():
         help="wandb project name")
     parser.add_argument("--wandb-name", type=str, default=None,
         help="wandb run name")
+    parser.add_argument("--wandb-entity", type=str, default=None,
+        help="Optional wandb entity/team name.")
+    parser.add_argument("--wandb-id", type=str, default=None,
+        help="Optional wandb run id to resume.")
+    parser.add_argument("--wandb-resume", type=str, default=None,
+        choices=["allow", "must", "never", "auto"],
+        help="W&B resume behavior used with --wandb-id.")
     parser.add_argument("--disable-eval-video", action="store_true",
         help="Disable expensive evaluation video generation during training.")
     
@@ -125,6 +147,12 @@ def parse_args():
     parser.add_argument("--object-id", type=str, default=None)
     parser.add_argument("--candidate-id", type=str, default=None)
     parser.add_argument("--physics-mode", type=str, default=None, choices=["rigid", "deformable"])
+    parser.add_argument("--resume-model", type=str, default=None,
+        help="Path to a saved SB3 model .zip to continue training from.")
+    parser.add_argument("--resume-vecnorm", type=str, default=None,
+        help="Path to saved VecNormalize stats .pkl matching --resume-model.")
+    parser.add_argument("--resume-reset-num-timesteps", action="store_true",
+        help="Reset SB3 timestep counter when resuming. By default resumed runs continue the counter.")
     args = parser.parse_args()
 
     # Normalize to absolute path and sanity-check
@@ -132,12 +160,29 @@ def parse_args():
     if not os.path.isfile(args.xml_path):
         raise FileNotFoundError(f"XML not found at {args.xml_path}")
     args.artifact_root = os.path.abspath(args.artifact_root)
+    if args.resume_model is not None:
+        args.resume_model = os.path.abspath(args.resume_model)
+        if not os.path.isfile(args.resume_model):
+            raise FileNotFoundError(f"Resume model not found at {args.resume_model}")
+    if args.resume_vecnorm is not None:
+        args.resume_vecnorm = os.path.abspath(args.resume_vecnorm)
+        if not os.path.isfile(args.resume_vecnorm):
+            raise FileNotFoundError(f"Resume VecNormalize stats not found at {args.resume_vecnorm}")
     
     # Auto-generate wandb name if not provided
     if args.wandb_name is None:
         args.wandb_name = f"{args.env_id}_{args.num_envs}env_{args.seed}"
     
     return args
+
+
+def resolve_device(requested_device: str) -> str:
+    if requested_device == "auto":
+        return "cuda" if torch.cuda.is_available() else "cpu"
+    if requested_device == "cuda" and not torch.cuda.is_available():
+        print("Warning: --device cuda requested but CUDA is unavailable; falling back to CPU.")
+        return "cpu"
+    return requested_device
 
 def make_env(
     xml_path,
@@ -150,6 +195,10 @@ def make_env(
     render_mode=None,
     debug_goals_live=False,
     debug_goals_every=1,
+    action_scale=1.0,
+    action_clip=None,
+    action_smoothing=0.0,
+    reset_settle_steps=0,
 ):
     def _init():
         env = DynamicXMLTouchEnv(
@@ -160,6 +209,10 @@ def make_env(
             render_mode=render_mode,
             debug_goal_print=debug_goals_live,
             debug_goal_print_every=debug_goals_every,
+            action_scale=action_scale,
+            action_clip=action_clip,
+            action_smoothing=action_smoothing,
+            reset_settle_steps=reset_settle_steps,
         )
         env = TimeLimit(env, max_episode_steps=max_steps)
         env.reset(seed=seed + rank)
@@ -168,7 +221,18 @@ def make_env(
         return env
     return _init
 
-def make_eval_env(xml_path, seed, target_position, target_rotation, ignore_z_rot, max_steps=100):
+def make_eval_env(
+    xml_path,
+    seed,
+    target_position,
+    target_rotation,
+    ignore_z_rot,
+    max_steps=100,
+    action_scale=1.0,
+    action_clip=None,
+    action_smoothing=0.0,
+    reset_settle_steps=0,
+):
     def _init():
         env = DynamicXMLTouchEnv(
             xml_path=xml_path,
@@ -176,6 +240,10 @@ def make_eval_env(xml_path, seed, target_position, target_rotation, ignore_z_rot
             target_rotation=target_rotation,
             ignore_z_target_rotation=ignore_z_rot,
             render_mode="rgb_array",
+            action_scale=action_scale,
+            action_clip=action_clip,
+            action_smoothing=action_smoothing,
+            reset_settle_steps=reset_settle_steps,
         )
         env = TimeLimit(env, max_episode_steps=max_steps)
         env.reset(seed=seed)
@@ -285,6 +353,8 @@ if __name__ == "__main__":
     print(f"Using {args.num_envs} parallel environments")
     print(f"Eval frequency: {args.eval_freq} timesteps")
     print(f"Total timesteps: {args.n_timesteps}")
+    device = resolve_device(args.device)
+    print(f"Using torch device: {device}")
     if args.debug_goals_live:
         print(f"Goal debug printing enabled every {max(1, args.debug_goals_every)} step(s)")
     if args.render_human:
@@ -295,10 +365,12 @@ if __name__ == "__main__":
     model_root = os.path.join(args.artifact_root, "models", args.env_id)
     run_root = os.path.join(args.artifact_root, "runs", f"{args.env_id}_{args.num_envs}env_{args.seed}")
     wandb_root = os.path.join(args.artifact_root, "wandb")
+    wandb_artifact_root = os.path.join(args.artifact_root, "artifacts", "wandb", f"{args.env_id}_{args.num_envs}env_{args.seed}")
     os.makedirs(video_root, exist_ok=True)
     os.makedirs(model_root, exist_ok=True)
     os.makedirs(run_root, exist_ok=True)
     os.makedirs(wandb_root, exist_ok=True)
+    os.makedirs(wandb_artifact_root, exist_ok=True)
     
     # Build hyperparameters dict
     hyperparams = {
@@ -330,16 +402,23 @@ if __name__ == "__main__":
         'eval_freq': args.eval_freq,
         'eval_episodes': args.eval_episodes,
         'save_freq': args.save_freq,
+        'action_scale': args.action_scale,
+        'action_clip': args.action_clip,
+        'action_smoothing': args.action_smoothing,
+        'reset_settle_steps': args.reset_settle_steps,
         **hyperparams
     }
     
     run = wandb.init(
+        entity=args.wandb_entity,
         project=args.wandb_project,
         config=env_config,
         sync_tensorboard=True,
         monitor_gym=True,
         save_code=True,
         name=args.wandb_name,
+        id=args.wandb_id,
+        resume=args.wandb_resume,
         dir=wandb_root,
     )
     
@@ -354,9 +433,14 @@ if __name__ == "__main__":
             args.target_position,
             args.target_rotation,
             args.ignore_z_rot,
+            max_steps=args.max_episode_steps,
             render_mode=train_render_mode,
             debug_goals_live=args.debug_goals_live,
             debug_goals_every=args.debug_goals_every,
+            action_scale=args.action_scale,
+            action_clip=args.action_clip,
+            action_smoothing=args.action_smoothing,
+            reset_settle_steps=args.reset_settle_steps,
         )
         for i in range(args.num_envs)
     ]
@@ -366,7 +450,13 @@ if __name__ == "__main__":
         env = SubprocVecEnv(env_fns, start_method="spawn")
 
     normalize_kwargs = {"gamma": hyperparams["gamma"]}
-    env = VecNormalize(env, **normalize_kwargs)
+    if args.resume_vecnorm:
+        env = VecNormalize.load(args.resume_vecnorm, env)
+        env.training = True
+        env.norm_reward = True
+        print(f"Loaded VecNormalize stats from: {args.resume_vecnorm}")
+    else:
+        env = VecNormalize(env, **normalize_kwargs)
 
     # env = VecVideoRecorder(
     #     env,
@@ -377,7 +467,12 @@ if __name__ == "__main__":
 
     # Eval env (also direct)
     eval_env = make_eval_env(args.xml_path, args.seed,
-                             args.target_position, args.target_rotation, args.ignore_z_rot
+                             args.target_position, args.target_rotation, args.ignore_z_rot,
+                             max_steps=args.max_episode_steps,
+                             action_scale=args.action_scale,
+                             action_clip=args.action_clip,
+                             action_smoothing=args.action_smoothing,
+                             reset_settle_steps=args.reset_settle_steps,
                              )
     eval_env = VecNormalize(eval_env, **normalize_kwargs)
     eval_env.training = False
@@ -390,16 +485,25 @@ if __name__ == "__main__":
     
     n_timesteps = int(args.n_timesteps)
     
-    # Create model
-    model = TQC(
-        env=env, 
-        replay_buffer_class=HerReplayBuffer, 
-        verbose=args.verbose,
-        seed=args.seed, 
-        device='cuda', 
-        tensorboard_log=run_root,
-        **hyperparams
-    )
+    if args.resume_model:
+        model = TQC.load(
+            args.resume_model,
+            env=env,
+            device=device,
+            tensorboard_log=run_root,
+        )
+        model.verbose = args.verbose
+        print(f"Loaded model checkpoint from: {args.resume_model}")
+    else:
+        model = TQC(
+            env=env, 
+            replay_buffer_class=HerReplayBuffer, 
+            verbose=args.verbose,
+            seed=args.seed, 
+            device=device,
+            tensorboard_log=run_root,
+            **hyperparams
+        )
 
     class EvalAndSaveCallback(WandbCallback):
         def __init__(self, vec_env, eval_env, model, save_freq, eval_freq, eval_episodes, 
@@ -407,7 +511,9 @@ if __name__ == "__main__":
                  target_position, target_rotation, ignore_z_rot,
                  metrics_path=None, total_timesteps=None, task_label=None,
                  object_id=None, candidate_id=None, physics_mode=None,
-                 video_root=None, disable_eval_video=False, **kwargs):
+                 video_root=None, wandb_artifact_path=None, disable_eval_video=False, action_scale=1.0,
+                 action_clip=None, action_smoothing=0.0, reset_settle_steps=0,
+                 max_episode_steps=100, eval_video_steps=200, **kwargs):
             super().__init__(**kwargs)
             self.vec_env = vec_env
             self.eval_env = eval_env
@@ -433,28 +539,63 @@ if __name__ == "__main__":
             self.candidate_id = candidate_id
             self.physics_mode = physics_mode
             self.video_root = video_root
+            self.wandb_artifact_path = wandb_artifact_path
             self.disable_eval_video = disable_eval_video
+            self.action_scale = action_scale
+            self.action_clip = action_clip
+            self.action_smoothing = action_smoothing
+            self.reset_settle_steps = reset_settle_steps
+            self.max_episode_steps = max_episode_steps
+            self.eval_video_steps = eval_video_steps
             self.checkpoint_steps = []
             self.success_curve = []
             self._last_eval_ts = 0
             self._last_save_ts = 0
 
+        def _safe_artifact_name(self, value):
+            return "".join(c if c.isalnum() or c in "-_." else "-" for c in value)
+        
+        def _save_and_upload_best_model(self, step_ts, success_rate):
+            if self.wandb_artifact_path is None:
+                self.wandb_artifact_path = self.save_path
+            os.makedirs(self.wandb_artifact_path, exist_ok=True)
 
+            best_model_path = os.path.join(self.wandb_artifact_path, "best_model.zip")
+            best_stats_path = os.path.join(self.wandb_artifact_path, "best_vecnorm.pkl")
+            self.model.save(best_model_path)
+            self.vec_env.save(best_stats_path)
+
+            artifact_name = self._safe_artifact_name(f"{self.env_id}-{self.seed}-best-model")
+            artifact = wandb.Artifact(
+                name=artifact_name,
+                type="model",
+                metadata={
+                    "env_id": self.env_id,
+                    "seed": int(self.seed),
+                    "step": int(step_ts),
+                    "success_rate": float(success_rate),
+                },
+            )
+            artifact.add_file(best_model_path, name="best_model.zip")
+            artifact.add_file(best_stats_path, name="best_vecnorm.pkl")
+            logged_artifact = wandb.run.log_artifact(artifact, aliases=["best", "latest"])
+            logged_artifact.wait()
+            print(f"Uploaded best model artifact '{artifact_name}' at {step_ts} timesteps")
+            return best_model_path
             
         def _on_step(self):
             super()._on_step()
             step_ts = int(self.model.num_timesteps)
             
             if step_ts - self._last_save_ts >= self.save_freq:
-                stats_path = os.path.join(self.save_path, f"vecnorm_{self.n_calls}.pkl")
+                stats_path = os.path.join(self.save_path, f"vecnorm_{step_ts}.pkl")
                 self.vec_env.save(stats_path)
                 wandb.save(stats_path)
                 print(f"Saved VecNormalize stats to {stats_path}")
                 
                 # Save the model
-                model_path = os.path.join(self.save_path, f"model_{self.n_calls}_steps.zip")
+                model_path = os.path.join(self.save_path, f"model_{step_ts}_steps.zip")
                 self.model.save(model_path)
-                wandb.save(model_path)
                 print(f"Saved model to {model_path}")
 
                 self._last_save_ts = step_ts
@@ -478,7 +619,7 @@ if __name__ == "__main__":
                 )
                 
                 # Log evaluation metrics to wandb
-                wandb.log(eval_metrics, step=self.n_calls)
+                wandb.log(eval_metrics, step=step_ts)
                 
                 print(f"Evaluation results: {eval_metrics}")
 
@@ -490,21 +631,24 @@ if __name__ == "__main__":
                 # Save best model based on success rate if available
                 if 'eval/success_rate' in eval_metrics and eval_metrics['eval/success_rate'] > self.best_success_rate:
                     self.best_success_rate = eval_metrics['eval/success_rate']
-                    best_model_path = os.path.join(self.save_path, f"best_model_{self.n_calls}_steps.zip")
-                    self.model.save(best_model_path)
-                    wandb.save(best_model_path)
+                    best_model_path = self._save_and_upload_best_model(step_ts, self.best_success_rate)
                     print(f"New best model with success rate {self.best_success_rate:.2f} saved to {best_model_path}")
                 
                 if not self.disable_eval_video:
                     try:
-                        print(f"Creating evaluation video at step {self.n_calls}...")
+                        print(f"Creating evaluation video at step {step_ts}...")
                         
-                        video_path = os.path.join(self.video_root, f"eval_{self.n_calls}")
+                        video_path = os.path.join(self.video_root, f"eval_{step_ts}")
                         os.makedirs(video_path, exist_ok=True)
 
                         # fresh env dedicated to video (has render_mode='rgb_array')
                         video_eval_env = make_eval_env(self.xml_path, self.seed,
-                                      self.target_position, self.target_rotation, self.ignore_z_rot)
+                                      self.target_position, self.target_rotation, self.ignore_z_rot,
+                                      max_steps=self.max_episode_steps,
+                                      action_scale=self.action_scale,
+                                      action_clip=self.action_clip,
+                                      action_smoothing=self.action_smoothing,
+                                      reset_settle_steps=self.reset_settle_steps)
                         video_eval_env = VecNormalize(video_eval_env, **self.normalize_kwargs)
                         # copy normalization stats so obs are comparable
                         video_eval_env.obs_rms = deepcopy(self.eval_env.obs_rms)
@@ -516,8 +660,8 @@ if __name__ == "__main__":
                             video_eval_env,
                             video_path,
                             record_video_trigger=lambda x: x == 0,  # record only first episode
-                            video_length=200,
-                            name_prefix=f"eval-{self.n_calls}"
+                            video_length=self.eval_video_steps,
+                            name_prefix=f"eval-{step_ts}"
                         )
                         
                         reset_return = video_env.reset()
@@ -538,7 +682,7 @@ if __name__ == "__main__":
                             
                         done = False
                         step_count = 0
-                        max_steps = 200  # Maximum video length
+                        max_steps = self.eval_video_steps  # Maximum video length
                         
                         print("Recording evaluation episode...")
                         while not done and step_count < max_steps:
@@ -594,8 +738,8 @@ if __name__ == "__main__":
                                 print(f"Logging video to wandb: {eval_video_path}")
                                 wandb.log({
                                     "eval/video": wandb.Video(eval_video_path, fps=30, format="mp4"),
-                                    "eval/video_step": self.n_calls
-                                }, step=self.n_calls)
+                                    "eval/video_step": step_ts
+                                }, step=step_ts)
                                 print("Successfully logged video to wandb")
                             else:
                                 print(f"Warning: Video file is empty or too small: {eval_video_path}")
@@ -648,6 +792,7 @@ if __name__ == "__main__":
     # Custom callback
     model.learn(
         total_timesteps=n_timesteps,
+        reset_num_timesteps=(not args.resume_model) or args.resume_reset_num_timesteps,
         callback=EvalAndSaveCallback(
             vec_env=env,
             xml_path=args.xml_path,
@@ -671,7 +816,14 @@ if __name__ == "__main__":
             candidate_id=args.candidate_id,
             physics_mode=args.physics_mode,
             video_root=video_root,
+            wandb_artifact_path=wandb_artifact_root,
             disable_eval_video=args.disable_eval_video,
+            action_scale=args.action_scale,
+            action_clip=args.action_clip,
+            action_smoothing=args.action_smoothing,
+            reset_settle_steps=args.reset_settle_steps,
+            max_episode_steps=args.max_episode_steps,
+            eval_video_steps=args.eval_video_steps,
 
 
             gradient_save_freq=args.gradient_save_freq,
@@ -689,7 +841,7 @@ if __name__ == "__main__":
     env.save(final_stats_path)
     
     # Run a final evaluation
-    final_eval_metrics = evaluate_policy(model, eval_env, n_eval_episodes=50)
+    final_eval_metrics = evaluate_policy(model, eval_env, n_eval_episodes=args.eval_episodes)
     wandb.log(final_eval_metrics, step=n_timesteps)
     
     print(f"Training finished!")
