@@ -119,8 +119,16 @@ worker () {
     pids+=("$!")
   done
 
-  wait "${pids[@]}"
-  echo "Node index ${node_index} finished all four jobs."
+  status=0
+  for pid in "${pids[@]}"; do
+    if ! wait "$pid"; then
+      echo "Training process $pid failed on node index ${node_index}"
+      status=1
+    fi
+  done
+
+  echo "Node index ${node_index} finished all four jobs with status ${status}."
+  exit "$status"
 }
 
 if [[ "${1:-}" == "--worker" ]]; then
