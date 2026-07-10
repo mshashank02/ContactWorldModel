@@ -167,6 +167,8 @@ def parse_args():
         help="Path to a saved replay buffer .pkl matching --resume-model. If omitted, a matching sibling file is detected automatically.")
     parser.add_argument("--no-save-replay-buffer", action="store_true",
         help="Do not save replay buffers with periodic and final checkpoints.")
+    parser.add_argument("--keep-replay-buffers-after-training", action="store_true",
+        help="Keep local replay-buffer files after successful training; by default they are deleted after run.finish().")
     parser.add_argument("--resume-reset-num-timesteps", action="store_true",
         help="Reset SB3 timestep counter when resuming. By default resumed runs continue the counter.")
     args = parser.parse_args()
@@ -233,6 +235,38 @@ def _checkpoint_step_from_path(model_path):
         return None
     match = re.search(r"model_(\d+)_steps\.zip$", model_path)
     return int(match.group(1)) if match else None
+
+
+def _format_bytes(num_bytes):
+    value = float(num_bytes)
+    for unit in ("B", "KiB", "MiB", "GiB", "TiB"):
+        if value < 1024.0 or unit == "TiB":
+            return f"{value:.2f} {unit}"
+        value /= 1024.0
+
+
+def _replay_buffer_array_bytes(replay_buffer):
+    """Estimate serialized payload size from unique NumPy arrays."""
+    seen_objects = set()
+    seen_arrays = set()
+
+    def visit(value):
+        object_id = id(value)
+        if object_id in seen_objects:
+            return 0
+        seen_objects.add(object_id)
+        if isinstance(value, np.ndarray):
+            if object_id in seen_arrays:
+                return 0
+            seen_arrays.add(object_id)
+            return int(value.nbytes)
+        if isinstance(value, dict):
+            return sum(visit(item) for item in value.values())
+        if isinstance(value, (list, tuple)):
+            return sum(visit(item) for item in value)
+        return 0
+
+    return visit(vars(replay_buffer))
 
 
 def _select_checkpoint_for_remote_step(args, remote_step, max_gap):
@@ -773,6 +807,7 @@ if __name__ == "__main__":
         print(f"Adjusted buffer size: {hyperparams['buffer_size']}")
     
     n_timesteps = int(args.n_timesteps)
+    replay_buffer_cleanup_paths = set()
     
     if args.resume_model:
         model = TQC.load(
@@ -788,6 +823,7 @@ if __name__ == "__main__":
                 args.resume_replay_buffer,
                 truncate_last_traj=True,
             )
+            replay_buffer_cleanup_paths.add(args.resume_replay_buffer)
             print(f"Loaded replay buffer from: {args.resume_replay_buffer}")
         else:
             # Legacy model checkpoints do not include the replay buffer. Since
@@ -807,6 +843,17 @@ if __name__ == "__main__":
             device=device,
             tensorboard_log=run_root,
             **hyperparams
+        )
+
+    replay_buffer_bytes = _replay_buffer_array_bytes(model.replay_buffer)
+    print(
+        "Replay-buffer NumPy payload is approximately "
+        f"{_format_bytes(replay_buffer_bytes)} in memory; local pickle size may vary."
+    )
+    if not args.no_save_replay_buffer:
+        print(
+            "Replay-buffer checkpoints are local-only and are never passed to "
+            "wandb.save or W&B artifacts."
         )
 
     checkpoint_step = int(model.num_timesteps)
@@ -848,7 +895,8 @@ if __name__ == "__main__":
                  video_root=None, wandb_artifact_path=None, disable_eval_video=False, action_scale=1.0,
                  action_clip=None, action_smoothing=0.0, reset_settle_steps=0,
                  max_episode_steps=100, eval_video_steps=200,
-                 save_replay_buffer=True, **kwargs):
+                 save_replay_buffer=True, replay_buffer_cleanup_paths=None,
+                 **kwargs):
             super().__init__(**kwargs)
             self.vec_env = vec_env
             self.eval_env = eval_env
@@ -883,6 +931,7 @@ if __name__ == "__main__":
             self.max_episode_steps = max_episode_steps
             self.eval_video_steps = eval_video_steps
             self.save_replay_buffer = save_replay_buffer
+            self.replay_buffer_cleanup_paths = replay_buffer_cleanup_paths
             self.checkpoint_steps = []
             self.success_curve = []
             # On resume, schedule the next save/eval relative to the loaded
@@ -936,6 +985,8 @@ if __name__ == "__main__":
                         self.save_path, f"replay_buffer_{step_ts}.pkl"
                     )
                     self.model.save_replay_buffer(replay_buffer_path)
+                    if self.replay_buffer_cleanup_paths is not None:
+                        self.replay_buffer_cleanup_paths.add(replay_buffer_path)
                     print(f"Saved replay buffer to {replay_buffer_path}")
 
                 # Save the model last. Its presence indicates that the paired
@@ -1172,6 +1223,7 @@ if __name__ == "__main__":
             max_episode_steps=args.max_episode_steps,
             eval_video_steps=args.eval_video_steps,
             save_replay_buffer=not args.no_save_replay_buffer,
+            replay_buffer_cleanup_paths=replay_buffer_cleanup_paths,
 
 
             gradient_save_freq=args.gradient_save_freq,
@@ -1190,8 +1242,11 @@ if __name__ == "__main__":
     )
     
     env.save(final_stats_path)
-    if not args.no_save_replay_buffer:
+    # A final replay buffer is useful only when the user explicitly keeps it;
+    # otherwise avoid a large write that would be deleted moments later.
+    if not args.no_save_replay_buffer and args.keep_replay_buffers_after_training:
         model.save_replay_buffer(final_replay_buffer_path)
+        replay_buffer_cleanup_paths.add(final_replay_buffer_path)
         print(f"Final replay buffer saved to: {final_replay_buffer_path}")
     model.save(final_model_path)
     
@@ -1205,3 +1260,20 @@ if __name__ == "__main__":
     print(f"Final normalization stats saved to: {final_stats_path}")
     
     run.finish()
+
+    if not args.keep_replay_buffers_after_training:
+        removed_count = 0
+        removed_bytes = 0
+        for replay_buffer_path in sorted(replay_buffer_cleanup_paths):
+            if not os.path.isfile(replay_buffer_path):
+                continue
+            try:
+                removed_bytes += os.path.getsize(replay_buffer_path)
+                os.remove(replay_buffer_path)
+                removed_count += 1
+            except OSError as exc:
+                print(f"Warning: could not delete replay buffer {replay_buffer_path}: {exc}")
+        print(
+            f"Deleted {removed_count} local replay-buffer file(s) "
+            f"({_format_bytes(removed_bytes)}) after successful training."
+        )
