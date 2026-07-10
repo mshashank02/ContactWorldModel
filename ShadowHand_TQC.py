@@ -493,7 +493,16 @@ if __name__ == "__main__":
             tensorboard_log=run_root,
         )
         model.verbose = args.verbose
+        # SB3 model checkpoints do not include the replay buffer. Since the
+        # loaded timestep counter is already beyond the original
+        # learning_starts value, defer gradient updates while the new HER
+        # replay buffer is populated with fresh, complete episodes.
+        model.learning_starts = model.num_timesteps + args.learning_starts
         print(f"Loaded model checkpoint from: {args.resume_model}")
+        print(
+            "Replay-buffer warm-up enabled until timestep "
+            f"{model.learning_starts}"
+        )
     else:
         model = TQC(
             env=env, 
