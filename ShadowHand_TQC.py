@@ -1,5 +1,9 @@
 import argparse
+import glob
 import json
+import re
+import shutil
+import subprocess
 from copy import deepcopy
 from functools import partial
 import gymnasium as gym
@@ -138,6 +142,14 @@ def parse_args():
     parser.add_argument("--wandb-resume", type=str, default=None,
         choices=["allow", "must", "never", "auto"],
         help="W&B resume behavior used with --wandb-id.")
+    parser.add_argument("--wandb-resume-max-step-gap", type=int, default=250000,
+        help="Maximum allowed difference between the remote W&B training step and a resume checkpoint.")
+    parser.add_argument("--skip-wandb-resume-check", action="store_true",
+        help="Skip the strict remote W&B/checkpoint continuity check (not recommended).")
+    parser.add_argument("--skip-wandb-local-sync", action="store_true",
+        help="Do not sync prior local sessions for the W&B run ID before resume validation.")
+    parser.add_argument("--no-wandb-checkpoint-fallback", action="store_true",
+        help="Fail instead of selecting an older checkpoint when W&B history is behind the requested model.")
     parser.add_argument("--disable-eval-video", action="store_true",
         help="Disable expensive evaluation video generation during training.")
     
@@ -151,6 +163,10 @@ def parse_args():
         help="Path to a saved SB3 model .zip to continue training from.")
     parser.add_argument("--resume-vecnorm", type=str, default=None,
         help="Path to saved VecNormalize stats .pkl matching --resume-model.")
+    parser.add_argument("--resume-replay-buffer", type=str, default=None,
+        help="Path to a saved replay buffer .pkl matching --resume-model. If omitted, a matching sibling file is detected automatically.")
+    parser.add_argument("--no-save-replay-buffer", action="store_true",
+        help="Do not save replay buffers with periodic and final checkpoints.")
     parser.add_argument("--resume-reset-num-timesteps", action="store_true",
         help="Reset SB3 timestep counter when resuming. By default resumed runs continue the counter.")
     args = parser.parse_args()
@@ -168,6 +184,20 @@ def parse_args():
         args.resume_vecnorm = os.path.abspath(args.resume_vecnorm)
         if not os.path.isfile(args.resume_vecnorm):
             raise FileNotFoundError(f"Resume VecNormalize stats not found at {args.resume_vecnorm}")
+    if args.resume_replay_buffer is not None:
+        args.resume_replay_buffer = os.path.abspath(args.resume_replay_buffer)
+        if not os.path.isfile(args.resume_replay_buffer):
+            raise FileNotFoundError(f"Resume replay buffer not found at {args.resume_replay_buffer}")
+    elif args.resume_model is not None:
+        checkpoint_match = re.search(r"model_(\d+)_steps\.zip$", args.resume_model)
+        if checkpoint_match:
+            inferred_replay_buffer = os.path.join(
+                os.path.dirname(args.resume_model),
+                f"replay_buffer_{checkpoint_match.group(1)}.pkl",
+            )
+            if os.path.isfile(inferred_replay_buffer):
+                args.resume_replay_buffer = inferred_replay_buffer
+                print(f"Auto-detected replay buffer: {args.resume_replay_buffer}")
     
     # Auto-generate wandb name if not provided
     if args.wandb_name is None:
@@ -183,6 +213,261 @@ def resolve_device(requested_device: str) -> str:
         print("Warning: --device cuda requested but CUDA is unavailable; falling back to CPU.")
         return "cpu"
     return requested_device
+
+
+def _summary_training_step(remote_run):
+    """Return the latest server-side training step recorded in W&B."""
+    summary = remote_run.summary
+    for key in ("training_step", "global_step", "time/total_timesteps"):
+        value = summary.get(key)
+        if value is not None:
+            try:
+                return int(value), key
+            except (TypeError, ValueError):
+                pass
+    return None, None
+
+
+def _checkpoint_step_from_path(model_path):
+    if not model_path:
+        return None
+    match = re.search(r"model_(\d+)_steps\.zip$", model_path)
+    return int(match.group(1)) if match else None
+
+
+def _select_checkpoint_for_remote_step(args, remote_step, max_gap):
+    """Select the complete local checkpoint closest to remote W&B history."""
+    model_dir = os.path.dirname(args.resume_model)
+    candidates = []
+    for model_path in glob.glob(os.path.join(model_dir, "model_*_steps.zip")):
+        step = _checkpoint_step_from_path(model_path)
+        if step is None or abs(step - remote_step) > max_gap:
+            continue
+        vecnorm_path = os.path.join(model_dir, f"vecnorm_{step}.pkl")
+        if not os.path.isfile(vecnorm_path):
+            continue
+        replay_buffer_path = os.path.join(model_dir, f"replay_buffer_{step}.pkl")
+        candidates.append(
+            (
+                step,
+                model_path,
+                vecnorm_path,
+                replay_buffer_path if os.path.isfile(replay_buffer_path) else None,
+            )
+        )
+
+    if not candidates:
+        raise RuntimeError(
+            f"W&B history ends at training step {remote_step:,}, but no complete "
+            "model_<step>_steps.zip and vecnorm_<step>.pkl pair exists within "
+            f"{max_gap:,} timesteps in {model_dir}."
+        )
+    # Prefer the closest checkpoint. On equal distance, prefer one just ahead
+    # of W&B so newly logged steps remain monotonic, then prefer the newer one.
+    return min(
+        candidates,
+        key=lambda item: (
+            abs(item[0] - remote_step),
+            0 if item[0] >= remote_step else 1,
+            -item[0],
+        ),
+    )
+
+
+def _find_large_history_gap(remote_run, step_key, max_gap):
+    """Find the first large jump or rewind in an exact W&B metric history."""
+    previous = None
+    for row in remote_run.scan_history(keys=[step_key], page_size=1000):
+        try:
+            current = int(row[step_key])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if previous is not None and abs(current - previous) > max_gap:
+            return previous, current
+        previous = current
+    return None
+
+
+def sync_prior_wandb_sessions(args, wandb_root):
+    """Upload incomplete local sessions for this run ID before live resume."""
+    if args.skip_wandb_local_sync:
+        return
+
+    run_patterns = (
+        os.path.join(wandb_root, f"run-*-{args.wandb_id}"),
+        os.path.join(wandb_root, f"offline-run-*-{args.wandb_id}"),
+        os.path.join(wandb_root, "wandb", f"run-*-{args.wandb_id}"),
+        os.path.join(wandb_root, "wandb", f"offline-run-*-{args.wandb_id}"),
+    )
+    run_dirs = sorted({
+        path
+        for pattern in run_patterns
+        for path in glob.glob(pattern)
+        if os.path.isdir(path)
+    })
+    if not run_dirs:
+        print("No prior local W&B session directories found for pre-resume sync.")
+        return
+
+    wandb_cli = shutil.which("wandb")
+    if not wandb_cli:
+        raise RuntimeError(
+            "Prior local W&B sessions exist, but the wandb CLI was not found. "
+            "Activate the training environment or use --skip-wandb-local-sync."
+        )
+
+    command = [
+        wandb_cli,
+        "sync",
+        "--include-online",
+        "--include-offline",
+        "--append",
+        "--id",
+        args.wandb_id,
+        "--project",
+        args.wandb_project,
+    ]
+    if args.wandb_entity:
+        command.extend(["--entity", args.wandb_entity])
+    command.extend(run_dirs)
+
+    print(f"Syncing {len(run_dirs)} prior local W&B session(s) before resume...")
+    result = subprocess.run(
+        command,
+        check=False,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    if result.stdout:
+        print(result.stdout.rstrip())
+    if result.returncode != 0:
+        raise RuntimeError(
+            "Local W&B sync failed, so live resume was stopped before wandb.init. "
+            f"wandb sync exited with status {result.returncode}."
+        )
+
+
+def validate_wandb_resume_history(args, checkpoint_step, wandb_root):
+    """Sync W&B and reconcile the requested checkpoint before wandb.init."""
+    if (
+        not args.resume_model
+        or not args.wandb_id
+        or args.skip_wandb_resume_check
+    ):
+        return checkpoint_step
+
+    if args.wandb_resume not in ("allow", "must", "auto"):
+        raise RuntimeError(
+            "A resume model and --wandb-id were supplied, but --wandb-resume "
+            "does not permit resuming the existing W&B run."
+        )
+
+    sync_prior_wandb_sessions(args, wandb_root)
+
+    try:
+        api = wandb.Api(timeout=60)
+        entity = args.wandb_entity or getattr(api, "default_entity", None)
+        if not entity:
+            raise RuntimeError(
+                "W&B entity could not be inferred; pass --wandb-entity explicitly."
+            )
+        run_path = f"{entity}/{args.wandb_project}/{args.wandb_id}"
+        remote_run = api.run(run_path)
+        remote_run.reload()
+        remote_step, step_key = _summary_training_step(remote_run)
+    except Exception as exc:
+        raise RuntimeError(
+            "W&B resume preflight failed before wandb.init, so no new data was "
+            "written. Ensure prior local W&B data is synced, verify network/login "
+            f"access and the run path, then retry. Details: {exc}"
+        ) from exc
+
+    if remote_step is None:
+        raise RuntimeError(
+            "W&B resume preflight found no training_step, global_step, or "
+            "time/total_timesteps in the remote run summary. Refusing to append "
+            "because checkpoint continuity cannot be verified. Sync the previous "
+            "session first, or explicitly use --skip-wandb-resume-check."
+        )
+
+    max_gap = max(0, int(args.wandb_resume_max_step_gap))
+    try:
+        history_gap = _find_large_history_gap(remote_run, step_key, max_gap)
+    except Exception as exc:
+        raise RuntimeError(
+            "W&B resume preflight could not scan the remote metric history, so "
+            "continuity cannot be guaranteed and no new data was written. "
+            f"Details: {exc}"
+        ) from exc
+    if history_gap is not None:
+        before, after = history_gap
+        direction = "jump" if after > before else "rewind"
+        raise RuntimeError(
+            "Unsafe W&B resume refused before wandb.init: the existing remote "
+            f"{step_key} history contains a {direction} from {before:,} to "
+            f"{after:,} ({abs(after - before):,} timesteps), exceeding the "
+            f"allowed gap of {max_gap:,}. The run already has a large missing "
+            "or non-monotonic section; recover/sync its source session or use a "
+            "clean W&B run."
+        )
+
+    gap = int(checkpoint_step) - remote_step
+    if abs(gap) > max_gap:
+        if gap > 0:
+            if args.no_wandb_checkpoint_fallback:
+                raise RuntimeError(
+                    "Unsafe W&B resume refused before wandb.init: "
+                    f"remote {step_key}={remote_step:,}, checkpoint={checkpoint_step:,}, "
+                    f"allowed gap={max_gap:,}; the checkpoint is {gap:,} timesteps "
+                    "ahead and --no-wandb-checkpoint-fallback was supplied."
+                )
+
+            original_target_step = int(checkpoint_step) + int(args.n_timesteps)
+            (
+                fallback_step,
+                fallback_model,
+                fallback_vecnorm,
+                fallback_replay_buffer,
+            ) = _select_checkpoint_for_remote_step(args, remote_step, max_gap)
+            args.resume_model = fallback_model
+            args.resume_vecnorm = fallback_vecnorm
+            args.resume_replay_buffer = fallback_replay_buffer
+            args.n_timesteps = max(0, original_target_step - fallback_step)
+            print(
+                "W&B history is behind the requested checkpoint by "
+                f"{gap:,} timesteps. Automatically rolling back to the closest "
+                "checkpoint aligned with the remote logs:"
+            )
+            print(f"  model: {fallback_model}")
+            print(f"  VecNormalize: {fallback_vecnorm}")
+            if fallback_replay_buffer:
+                print(f"  replay buffer: {fallback_replay_buffer}")
+            else:
+                print("  replay buffer: unavailable; resume warm-up will be used")
+            print(
+                f"  adjusted additional training: {int(args.n_timesteps):,} "
+                f"timesteps (absolute target remains {original_target_step:,})"
+            )
+            return fallback_step
+        else:
+            reason = (
+                f"the W&B server is {-gap:,} timesteps ahead of the checkpoint; "
+                "the selected checkpoint is stale relative to this run"
+            )
+        raise RuntimeError(
+            "Unsafe W&B resume refused before wandb.init: "
+            f"remote {step_key}={remote_step:,}, checkpoint={checkpoint_step:,}, "
+            f"allowed gap={max_gap:,}; {reason}. Sync/recover the earlier W&B "
+            "session or select the matching checkpoint/run ID."
+        )
+
+    print(
+        "W&B resume preflight passed: "
+        f"remote {step_key}={remote_step:,}, checkpoint={checkpoint_step:,}, "
+        f"gap={gap:,}."
+    )
+    return checkpoint_step
 
 def make_env(
     xml_path,
@@ -371,6 +656,23 @@ if __name__ == "__main__":
     os.makedirs(run_root, exist_ok=True)
     os.makedirs(wandb_root, exist_ok=True)
     os.makedirs(wandb_artifact_root, exist_ok=True)
+
+    requested_checkpoint_step = _checkpoint_step_from_path(args.resume_model)
+    if args.resume_model and args.wandb_id and requested_checkpoint_step is None:
+        raise RuntimeError(
+            "Strict W&B resume requires a standard model_<step>_steps.zip "
+            "checkpoint filename so continuity can be checked before loading."
+        )
+    if args.resume_reset_num_timesteps and args.wandb_id:
+        raise RuntimeError(
+            "--resume-reset-num-timesteps cannot safely append to an existing "
+            "W&B run because it would make training steps non-monotonic."
+        )
+    prepared_checkpoint_step = validate_wandb_resume_history(
+        args,
+        requested_checkpoint_step,
+        wandb_root,
+    )
     
     # Build hyperparameters dict
     hyperparams = {
@@ -408,19 +710,6 @@ if __name__ == "__main__":
         'reset_settle_steps': args.reset_settle_steps,
         **hyperparams
     }
-    
-    run = wandb.init(
-        entity=args.wandb_entity,
-        project=args.wandb_project,
-        config=env_config,
-        sync_tensorboard=True,
-        monitor_gym=True,
-        save_code=True,
-        name=args.wandb_name,
-        id=args.wandb_id,
-        resume=args.wandb_resume,
-        dir=wandb_root,
-    )
     
     # Create parallel environments
     xml_path = args.xml_path  # passed from generate_and_train
@@ -493,16 +782,22 @@ if __name__ == "__main__":
             tensorboard_log=run_root,
         )
         model.verbose = args.verbose
-        # SB3 model checkpoints do not include the replay buffer. Since the
-        # loaded timestep counter is already beyond the original
-        # learning_starts value, defer gradient updates while the new HER
-        # replay buffer is populated with fresh, complete episodes.
-        model.learning_starts = model.num_timesteps + args.learning_starts
         print(f"Loaded model checkpoint from: {args.resume_model}")
-        print(
-            "Replay-buffer warm-up enabled until timestep "
-            f"{model.learning_starts}"
-        )
+        if args.resume_replay_buffer:
+            model.load_replay_buffer(
+                args.resume_replay_buffer,
+                truncate_last_traj=True,
+            )
+            print(f"Loaded replay buffer from: {args.resume_replay_buffer}")
+        else:
+            # Legacy model checkpoints do not include the replay buffer. Since
+            # the loaded timestep counter is already beyond learning_starts,
+            # defer updates while a new HER buffer gets complete episodes.
+            model.learning_starts = model.num_timesteps + args.learning_starts
+            print(
+                "No matching replay buffer was found. Replay-buffer warm-up "
+                f"enabled until timestep {model.learning_starts}."
+            )
     else:
         model = TQC(
             env=env, 
@@ -514,6 +809,36 @@ if __name__ == "__main__":
             **hyperparams
         )
 
+    checkpoint_step = int(model.num_timesteps)
+    if (
+        prepared_checkpoint_step is not None
+        and checkpoint_step != int(prepared_checkpoint_step)
+    ):
+        env.close()
+        eval_env.close()
+        raise RuntimeError(
+            "Loaded model timestep does not match its checkpoint filename: "
+            f"model contains {checkpoint_step:,}, filename says "
+            f"{int(prepared_checkpoint_step):,}. Refusing W&B resume."
+        )
+
+    # Do not initialize (and therefore do not write to) W&B until the remote
+    # history has been refreshed and checked against the loaded checkpoint.
+    run = wandb.init(
+        entity=args.wandb_entity,
+        project=args.wandb_project,
+        config=env_config,
+        sync_tensorboard=True,
+        monitor_gym=True,
+        save_code=True,
+        name=args.wandb_name,
+        id=args.wandb_id,
+        resume=args.wandb_resume,
+        dir=wandb_root,
+    )
+    run.define_metric("training_step")
+    run.define_metric("eval/*", step_metric="training_step")
+
     class EvalAndSaveCallback(WandbCallback):
         def __init__(self, vec_env, eval_env, model, save_freq, eval_freq, eval_episodes, 
                  save_path, env_id, seed, normalize_kwargs, xml_path,
@@ -522,7 +847,8 @@ if __name__ == "__main__":
                  object_id=None, candidate_id=None, physics_mode=None,
                  video_root=None, wandb_artifact_path=None, disable_eval_video=False, action_scale=1.0,
                  action_clip=None, action_smoothing=0.0, reset_settle_steps=0,
-                 max_episode_steps=100, eval_video_steps=200, **kwargs):
+                 max_episode_steps=100, eval_video_steps=200,
+                 save_replay_buffer=True, **kwargs):
             super().__init__(**kwargs)
             self.vec_env = vec_env
             self.eval_env = eval_env
@@ -556,10 +882,13 @@ if __name__ == "__main__":
             self.reset_settle_steps = reset_settle_steps
             self.max_episode_steps = max_episode_steps
             self.eval_video_steps = eval_video_steps
+            self.save_replay_buffer = save_replay_buffer
             self.checkpoint_steps = []
             self.success_curve = []
-            self._last_eval_ts = 0
-            self._last_save_ts = 0
+            # On resume, schedule the next save/eval relative to the loaded
+            # checkpoint instead of firing both callbacks immediately.
+            self._last_eval_ts = int(model.num_timesteps)
+            self._last_save_ts = int(model.num_timesteps)
 
         def _safe_artifact_name(self, value):
             return "".join(c if c.isalnum() or c in "-_." else "-" for c in value)
@@ -601,8 +930,16 @@ if __name__ == "__main__":
                 self.vec_env.save(stats_path)
                 wandb.save(stats_path)
                 print(f"Saved VecNormalize stats to {stats_path}")
-                
-                # Save the model
+
+                if self.save_replay_buffer:
+                    replay_buffer_path = os.path.join(
+                        self.save_path, f"replay_buffer_{step_ts}.pkl"
+                    )
+                    self.model.save_replay_buffer(replay_buffer_path)
+                    print(f"Saved replay buffer to {replay_buffer_path}")
+
+                # Save the model last. Its presence indicates that the paired
+                # normalization and replay-buffer writes completed first.
                 model_path = os.path.join(self.save_path, f"model_{step_ts}_steps.zip")
                 self.model.save(model_path)
                 print(f"Saved model to {model_path}")
@@ -628,7 +965,7 @@ if __name__ == "__main__":
                 )
                 
                 # Log evaluation metrics to wandb
-                wandb.log(eval_metrics, step=step_ts)
+                wandb.log({"training_step": step_ts, **eval_metrics})
                 
                 print(f"Evaluation results: {eval_metrics}")
 
@@ -746,9 +1083,10 @@ if __name__ == "__main__":
                             if os.path.exists(eval_video_path) and os.path.getsize(eval_video_path) > 1000:
                                 print(f"Logging video to wandb: {eval_video_path}")
                                 wandb.log({
+                                    "training_step": step_ts,
                                     "eval/video": wandb.Video(eval_video_path, fps=30, format="mp4"),
                                     "eval/video_step": step_ts
-                                }, step=step_ts)
+                                })
                                 print("Successfully logged video to wandb")
                             else:
                                 print(f"Warning: Video file is empty or too small: {eval_video_path}")
@@ -771,7 +1109,7 @@ if __name__ == "__main__":
                 succ = float(eval_metrics.get('eval/success_rate', 0.0))
                 self.checkpoint_steps.append(step_ts)
                 self.success_curve.append(succ)
-                wandb.log(eval_metrics, step=step_ts)
+                wandb.log({"training_step": step_ts, **eval_metrics})
             
             # write BO metrics JSON
             if self.metrics_path:
@@ -833,6 +1171,7 @@ if __name__ == "__main__":
             reset_settle_steps=args.reset_settle_steps,
             max_episode_steps=args.max_episode_steps,
             eval_video_steps=args.eval_video_steps,
+            save_replay_buffer=not args.no_save_replay_buffer,
 
 
             gradient_save_freq=args.gradient_save_freq,
@@ -845,13 +1184,20 @@ if __name__ == "__main__":
     # Save final model and normalization stats
     final_model_path = os.path.join(model_root, f"{args.env_id}_{args.num_envs}env_{args.seed}_final")
     final_stats_path = os.path.join(model_root, f"{args.env_id}_{args.num_envs}env_{args.seed}_vecnorm_final.pkl")
+    final_replay_buffer_path = os.path.join(
+        model_root,
+        f"{args.env_id}_{args.num_envs}env_{args.seed}_replay_buffer_final.pkl",
+    )
     
-    model.save(final_model_path)
     env.save(final_stats_path)
+    if not args.no_save_replay_buffer:
+        model.save_replay_buffer(final_replay_buffer_path)
+        print(f"Final replay buffer saved to: {final_replay_buffer_path}")
+    model.save(final_model_path)
     
     # Run a final evaluation
     final_eval_metrics = evaluate_policy(model, eval_env, n_eval_episodes=args.eval_episodes)
-    wandb.log(final_eval_metrics, step=n_timesteps)
+    wandb.log({"training_step": int(model.num_timesteps), **final_eval_metrics})
     
     print(f"Training finished!")
     print(f"Final evaluation results: {final_eval_metrics}")
