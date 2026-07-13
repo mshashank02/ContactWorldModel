@@ -248,6 +248,10 @@ These flags are parsed by `ShadowHand_TQC.py`, not by the generator.
 | `--eval-freq` | Evaluation interval | Periodic eval during training |
 | `--eval-episodes` | Eval episode count | Success-rate estimate |
 | `--save-freq` | Save interval | Saves model and VecNormalize stats |
+| `--save-replay-buffer` | Off | Also save the full HER replay buffer (can be very large) |
+| `--resume-model` | None | Resume networks, optimizers, and timestep counter from an SB3 checkpoint |
+| `--resume-vecnorm` | None | Restore matching observation/reward normalization stats |
+| `--resume-warmup-steps` | `--learning-starts` | Fresh transitions collected before updates after a bufferless resume |
 | `--disable-eval-video` | Skip eval video generation | Faster/cheaper evaluation |
 | `--artifact-root` | Artifact output root | Where `models/`, `videos/`, `runs/`, and `wandb/` go |
 | `--metrics-json` | Metrics output path | Used by BO / worker pipeline |
@@ -258,6 +262,15 @@ These flags are parsed by `ShadowHand_TQC.py`, not by the generator.
 | `--target-position` | Goal position behavior | `random` or `ignore` |
 | `--ignore-z-rot` | Ignore z-axis rotation error | Used for pen-style tasks |
 | `--action-scale` | Optional debug scale applied before actuator mapping | Default `1.0`; keep full range for normal training |
+
+Periodic checkpoints are compact by default: `model_<step>_steps.zip` and
+`vecnorm_<step>.pkl` are sufficient to resume. When `--resume-model` uses that
+standard filename, the matching VecNormalize file is detected automatically.
+Without a replay buffer, training first gathers fresh experience for
+`--resume-warmup-steps` transitions, then resumes gradient updates. Use
+`--save-replay-buffer` only when exact replay continuity is worth the extra disk
+space. Warm-up is automatically raised to at least
+`--max-episode-steps * --num-envs` so HER has a complete episode to sample.
 
 ### Task-Dependent Training Defaults Injected Automatically
 

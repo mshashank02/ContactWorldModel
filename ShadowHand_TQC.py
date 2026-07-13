@@ -165,13 +165,21 @@ def parse_args():
         help="Path to saved VecNormalize stats .pkl matching --resume-model.")
     parser.add_argument("--resume-replay-buffer", type=str, default=None,
         help="Path to a saved replay buffer .pkl matching --resume-model. If omitted, a matching sibling file is detected automatically.")
-    parser.add_argument("--no-save-replay-buffer", action="store_true",
-        help="Do not save replay buffers with periodic and final checkpoints.")
+    replay_buffer_saving = parser.add_mutually_exclusive_group()
+    replay_buffer_saving.add_argument("--save-replay-buffer", action="store_true",
+        help="Save full replay buffers with checkpoints. Disabled by default because HER buffers can be very large.")
+    replay_buffer_saving.add_argument("--no-save-replay-buffer", action="store_true",
+        help="Deprecated compatibility flag; replay-buffer saving is now disabled by default.")
     parser.add_argument("--keep-replay-buffers-after-training", action="store_true",
-        help="Keep local replay-buffer files after successful training; by default they are deleted after run.finish().")
+        help="Keep local replay-buffer files after successful training when --save-replay-buffer is enabled.")
+    parser.add_argument("--resume-warmup-steps", type=int, default=None,
+        help="Fresh transitions to collect before updating after a bufferless resume (default: --learning-starts).")
     parser.add_argument("--resume-reset-num-timesteps", action="store_true",
         help="Reset SB3 timestep counter when resuming. By default resumed runs continue the counter.")
     args = parser.parse_args()
+
+    if args.resume_warmup_steps is not None and args.resume_warmup_steps < 0:
+        parser.error("--resume-warmup-steps must be non-negative")
 
     # Normalize to absolute path and sanity-check
     args.xml_path = os.path.abspath(args.xml_path)
@@ -186,6 +194,16 @@ def parse_args():
         args.resume_vecnorm = os.path.abspath(args.resume_vecnorm)
         if not os.path.isfile(args.resume_vecnorm):
             raise FileNotFoundError(f"Resume VecNormalize stats not found at {args.resume_vecnorm}")
+    elif args.resume_model is not None:
+        checkpoint_match = re.search(r"model_(\d+)_steps\.zip$", args.resume_model)
+        if checkpoint_match:
+            inferred_vecnorm = os.path.join(
+                os.path.dirname(args.resume_model),
+                f"vecnorm_{checkpoint_match.group(1)}.pkl",
+            )
+            if os.path.isfile(inferred_vecnorm):
+                args.resume_vecnorm = inferred_vecnorm
+                print(f"Auto-detected VecNormalize stats: {args.resume_vecnorm}")
     if args.resume_replay_buffer is not None:
         args.resume_replay_buffer = os.path.abspath(args.resume_replay_buffer)
         if not os.path.isfile(args.resume_replay_buffer):
@@ -823,16 +841,41 @@ if __name__ == "__main__":
                 args.resume_replay_buffer,
                 truncate_last_traj=True,
             )
-            replay_buffer_cleanup_paths.add(args.resume_replay_buffer)
             print(f"Loaded replay buffer from: {args.resume_replay_buffer}")
+            if args.resume_reset_num_timesteps:
+                # A loaded buffer is immediately sampleable. Do not retain an
+                # absolute learning_starts value from the prior timestep axis.
+                model.learning_starts = 0
         else:
-            # Legacy model checkpoints do not include the replay buffer. Since
-            # the loaded timestep counter is already beyond learning_starts,
-            # defer updates while a new HER buffer gets complete episodes.
-            model.learning_starts = model.num_timesteps + args.learning_starts
+            # The checkpoint contains the networks and optimizer state, but a
+            # fresh HER buffer needs complete episodes before it can be sampled.
+            requested_warmup_steps = (
+                args.learning_starts
+                if args.resume_warmup_steps is None
+                else args.resume_warmup_steps
+            )
+            # SB3 counts timesteps across every vectorized environment. Waiting
+            # this long guarantees that at least one TimeLimit episode can
+            # finish before HER attempts its first sample.
+            minimum_warmup_steps = args.max_episode_steps * args.num_envs
+            resume_warmup_steps = max(
+                requested_warmup_steps,
+                minimum_warmup_steps,
+            )
+            if resume_warmup_steps != requested_warmup_steps:
+                print(
+                    "Increasing bufferless-resume warm-up from "
+                    f"{requested_warmup_steps:,} to {resume_warmup_steps:,} "
+                    "timesteps so HER receives a complete episode."
+                )
+            warmup_start_step = (
+                0 if args.resume_reset_num_timesteps else model.num_timesteps
+            )
+            model.learning_starts = warmup_start_step + resume_warmup_steps
             print(
-                "No matching replay buffer was found. Replay-buffer warm-up "
-                f"enabled until timestep {model.learning_starts}."
+                "No replay buffer was loaded. Bufferless resume is collecting "
+                f"{resume_warmup_steps:,} fresh transitions before updates "
+                f"(until timestep {model.learning_starts:,})."
             )
     else:
         model = TQC(
@@ -850,10 +893,15 @@ if __name__ == "__main__":
         "Replay-buffer NumPy payload is approximately "
         f"{_format_bytes(replay_buffer_bytes)} in memory; local pickle size may vary."
     )
-    if not args.no_save_replay_buffer:
+    if args.save_replay_buffer:
         print(
             "Replay-buffer checkpoints are local-only and are never passed to "
             "wandb.save or W&B artifacts."
+        )
+    else:
+        print(
+            "Compact checkpoints enabled: replay buffers will not be saved. "
+            "Resuming will rebuild the buffer from fresh experience."
         )
 
     checkpoint_step = int(model.num_timesteps)
@@ -896,6 +944,7 @@ if __name__ == "__main__":
                  action_clip=None, action_smoothing=0.0, reset_settle_steps=0,
                  max_episode_steps=100, eval_video_steps=200,
                  save_replay_buffer=True, replay_buffer_cleanup_paths=None,
+                 initial_timestep=None,
                  **kwargs):
             super().__init__(**kwargs)
             self.vec_env = vec_env
@@ -935,9 +984,14 @@ if __name__ == "__main__":
             self.checkpoint_steps = []
             self.success_curve = []
             # On resume, schedule the next save/eval relative to the loaded
-            # checkpoint instead of firing both callbacks immediately.
-            self._last_eval_ts = int(model.num_timesteps)
-            self._last_save_ts = int(model.num_timesteps)
+            # checkpoint. A reset resume starts its schedule from zero.
+            schedule_start = (
+                int(model.num_timesteps)
+                if initial_timestep is None
+                else int(initial_timestep)
+            )
+            self._last_eval_ts = schedule_start
+            self._last_save_ts = schedule_start
 
         def _safe_artifact_name(self, value):
             return "".join(c if c.isalnum() or c in "-_." else "-" for c in value)
@@ -990,7 +1044,7 @@ if __name__ == "__main__":
                     print(f"Saved replay buffer to {replay_buffer_path}")
 
                 # Save the model last. Its presence indicates that the paired
-                # normalization and replay-buffer writes completed first.
+                # normalization (and optional replay-buffer) write completed.
                 model_path = os.path.join(self.save_path, f"model_{step_ts}_steps.zip")
                 self.model.save(model_path)
                 print(f"Saved model to {model_path}")
@@ -1222,8 +1276,11 @@ if __name__ == "__main__":
             reset_settle_steps=args.reset_settle_steps,
             max_episode_steps=args.max_episode_steps,
             eval_video_steps=args.eval_video_steps,
-            save_replay_buffer=not args.no_save_replay_buffer,
+            save_replay_buffer=args.save_replay_buffer,
             replay_buffer_cleanup_paths=replay_buffer_cleanup_paths,
+            initial_timestep=(
+                0 if args.resume_reset_num_timesteps else model.num_timesteps
+            ),
 
 
             gradient_save_freq=args.gradient_save_freq,
@@ -1244,7 +1301,7 @@ if __name__ == "__main__":
     env.save(final_stats_path)
     # A final replay buffer is useful only when the user explicitly keeps it;
     # otherwise avoid a large write that would be deleted moments later.
-    if not args.no_save_replay_buffer and args.keep_replay_buffers_after_training:
+    if args.save_replay_buffer and args.keep_replay_buffers_after_training:
         model.save_replay_buffer(final_replay_buffer_path)
         replay_buffer_cleanup_paths.add(final_replay_buffer_path)
         print(f"Final replay buffer saved to: {final_replay_buffer_path}")
