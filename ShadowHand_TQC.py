@@ -1007,21 +1007,37 @@ if __name__ == "__main__":
             self.vec_env.save(best_stats_path)
 
             artifact_name = self._safe_artifact_name(f"{self.env_id}-{self.seed}-best-model")
-            artifact = wandb.Artifact(
-                name=artifact_name,
-                type="model",
-                metadata={
-                    "env_id": self.env_id,
-                    "seed": int(self.seed),
-                    "step": int(step_ts),
-                    "success_rate": float(success_rate),
-                },
-            )
-            artifact.add_file(best_model_path, name="best_model.zip")
-            artifact.add_file(best_stats_path, name="best_vecnorm.pkl")
-            logged_artifact = wandb.run.log_artifact(artifact, aliases=["best", "latest"])
-            logged_artifact.wait()
-            print(f"Uploaded best model artifact '{artifact_name}' at {step_ts} timesteps")
+            try:
+                artifact = wandb.Artifact(
+                    name=artifact_name,
+                    type="model",
+                    metadata={
+                        "env_id": self.env_id,
+                        "seed": int(self.seed),
+                        "step": int(step_ts),
+                        "success_rate": float(success_rate),
+                    },
+                )
+                artifact.add_file(best_model_path, name="best_model.zip")
+                artifact.add_file(best_stats_path, name="best_vecnorm.pkl")
+                logged_artifact = wandb.run.log_artifact(
+                    artifact,
+                    aliases=["best", "latest"],
+                )
+                logged_artifact.wait()
+                print(
+                    f"Uploaded best model artifact '{artifact_name}' "
+                    f"at {step_ts} timesteps"
+                )
+            except Exception as exc:
+                # W&B is observability, not part of the training state. The
+                # model and VecNormalize statistics were saved locally above,
+                # so a transient upload failure must not terminate training.
+                print(
+                    "WARNING: W&B best-model artifact upload failed; "
+                    "continuing training with the locally saved files. "
+                    f"Artifact: '{artifact_name}'. Error: {exc}"
+                )
             return best_model_path
             
         def _on_step(self):
