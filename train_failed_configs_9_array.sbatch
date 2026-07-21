@@ -8,7 +8,7 @@
 #SBATCH --gpus=1
 #SBATCH --mem=100G
 #SBATCH --time=30:00:00
-#SBATCH --array=0-8%9
+#SBATCH --array=0-2%3
 #SBATCH --output=slurm-%x-%A_%a.out
 #SBATCH --error=slurm-%x-%A_%a.err
 
@@ -35,12 +35,6 @@ CONFIGS=(
   "n0500_a0p3_b0p6|500|1.071428571|0.7142857143|small|obj_size_small_ar_high_macro_low_rough_high|study_objects/sphere_study_v1/obj_size-small_ar-high_macro-low_rough-high.msh"
   "n0500_a0p3_b0p6|500|1.071428571|0.7142857143|medium|obj_size_medium_ar_high_macro_low_rough_low|study_objects/sphere_study_v1/obj_size-medium_ar-high_macro-low_rough-low.msh"
   "n0500_a0p3_b0p6|500|1.071428571|0.7142857143|small|obj_size_small_ar_high_macro_low_rough_low|study_objects/sphere_study_v1/obj_size-small_ar-high_macro-low_rough-low.msh"
-  "n0500_a0p3_b0p6|500|1.071428571|0.7142857143|large|obj_size_large_ar_low_macro_low_rough_low|study_objects/sphere_study_v1/obj_size-large_ar-low_macro-low_rough-low.msh"
-  "n0500_a0p3_b0p6|500|1.071428571|0.7142857143|medium|obj_size_medium_ar_low_macro_low_rough_low|study_objects/sphere_study_v1/obj_size-medium_ar-low_macro-low_rough-low.msh"
-  "n0500_a0p3_b0p6|500|1.071428571|0.7142857143|small|obj_size_small_ar_low_macro_low_rough_low|study_objects/sphere_study_v1/obj_size-small_ar-low_macro-low_rough-low.msh"
-  "n0500_a0p5_b0p2|500|1.25|5|small|obj_size_small_ar_low_macro_high_rough_high|study_objects/sphere_study_v1/obj_size-small_ar-low_macro-high_rough-high.msh"
-  "n0500_a0p5_b0p2|500|1.25|5|medium|obj_size_medium_ar_low_macro_high_rough_low|study_objects/sphere_study_v1/obj_size-medium_ar-low_macro-high_rough-low.msh"
-  "n0500_a0p5_b0p2|500|1.25|5|small|obj_size_small_ar_low_macro_low_rough_low|study_objects/sphere_study_v1/obj_size-small_ar-low_macro-low_rough-low.msh"
 )
 
 array_index=${SLURM_ARRAY_TASK_ID:?This script must be submitted as a Slurm array job}
@@ -82,12 +76,15 @@ python generate_and_train.py \
   --out-root "$run_root" \
   --artifact-root "$run_root" -- \
   --device cuda \
-  --num-envs 16 \
+  --num-envs 36 \
   --seed 0 \
   --n-timesteps 16000000 \
+  --learning-starts 10000 \
   --eval-freq 20000 \
-  --eval-episodes 50 \
-  --max-episode-steps 200 \
+  --eval-episodes 10 \
+  --disable-eval-video \
+  --wandb-project single_end_to_end_shadowhand \
+  --target-position random \
   --metrics-json "$metrics_json" \
   --task-name "$object_id" \
   --object-id "$object_id" \
