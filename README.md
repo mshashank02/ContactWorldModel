@@ -2,6 +2,10 @@
 
 Touch-sensor-based in-hand manipulation with Shadow Hand, trained using **TQC + HER**.
 
+World-model trajectory collection, including sparse policy touch and passive
+dense oracle touch, is documented in
+[`docs/world_model_data.md`](docs/world_model_data.md).
+
 ## Current Status
 
 - Supports standalone environment generation via `pipeline_generate.py`.

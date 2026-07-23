@@ -7,3 +7,5 @@ imageio
 tensorboard
 botorch
 pyyaml
+pandas
+pyarrow

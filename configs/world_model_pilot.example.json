@@ -1,0 +1,47 @@
+{
+  "validate_after": true,
+  "defaults": {
+    "dataset_root": "../datasets/world_model_pilot",
+    "oracle_site_xml": "../assets/Sensors_withPos.xml",
+    "oracle_sensor_xml": "../assets/shared_touch_sensors_90_1_1.xml",
+    "max_episode_steps": 100,
+    "seed": 2026,
+    "event_oversample_factor": 2.0,
+    "xml_path": "../generated/pilot/{candidate_id}/{object_id}/{physics_mode}/environment.xml",
+    "checkpoint": "../models/pilot/{candidate_id}/{object_id}/{physics_mode}/model_{policy_checkpoint_step}_steps.zip",
+    "vecnormalize": "../models/pilot/{candidate_id}/{object_id}/{physics_mode}/vecnorm_{policy_checkpoint_step}.pkl"
+  },
+  "pilot_matrix": {
+    "episodes_per_combination": 100,
+    "expected_counts": {
+      "objects": 6,
+      "layouts": 8,
+      "stages": 5
+    },
+    "objects": [
+      {"object_id": "rigid_small_round_smooth", "physics_mode": "rigid", "size": "small", "aspect_ratio": "low", "roughness": "low", "macro_geometry": "round"},
+      {"object_id": "rigid_large_long_rough", "physics_mode": "rigid", "size": "large", "aspect_ratio": "high", "roughness": "high", "macro_geometry": "elongated"},
+      {"object_id": "rigid_medium_irregular", "physics_mode": "rigid", "size": "medium", "aspect_ratio": "low", "roughness": "high", "macro_geometry": "irregular"},
+      {"object_id": "soft_small_long_smooth", "physics_mode": "deformable", "size": "small", "aspect_ratio": "high", "roughness": "low", "macro_geometry": "elongated"},
+      {"object_id": "soft_large_round_rough", "physics_mode": "deformable", "size": "large", "aspect_ratio": "low", "roughness": "high", "macro_geometry": "round"},
+      {"object_id": "soft_medium_irregular", "physics_mode": "deformable", "size": "medium", "aspect_ratio": "high", "roughness": "low", "macro_geometry": "irregular"}
+    ],
+    "layouts": [
+      {"candidate_id": "pilot_layout_01", "alpha": 0.2, "beta": 0.2},
+      {"candidate_id": "pilot_layout_02", "alpha": 0.2, "beta": 0.8},
+      {"candidate_id": "pilot_layout_03", "alpha": 0.4, "beta": 0.5},
+      {"candidate_id": "pilot_layout_04", "alpha": 0.5, "beta": 0.2},
+      {"candidate_id": "pilot_layout_05", "alpha": 0.5, "beta": 0.8},
+      {"candidate_id": "pilot_layout_06", "alpha": 0.7, "beta": 0.3},
+      {"candidate_id": "pilot_layout_07", "alpha": 0.8, "beta": 0.6},
+      {"candidate_id": "pilot_layout_08", "alpha": 0.9, "beta": 0.9}
+    ],
+    "stages": [
+      {"policy_stage": "random", "checkpoint": null, "vecnormalize": null, "policy_checkpoint_step": null},
+      {"policy_stage": "0.5M", "policy_checkpoint_step": 500000},
+      {"policy_stage": "2M", "policy_checkpoint_step": 2000000},
+      {"policy_stage": "8M", "policy_checkpoint_step": 8000000},
+      {"policy_stage": "16M", "policy_checkpoint_step": 16000000}
+    ]
+  }
+}
